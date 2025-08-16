@@ -315,7 +315,6 @@ document.addEventListener('DOMContentLoaded', function(){
       return '<div class="item"><div><b>Deliver '+m.qty+'</b> to <i>'+planetById(m.to).name+'</i> <span class="badge">$'+m.reward+'</span> '+lock+'</div>'+btn+'</div>';
     }).join('') || '<div class="item">No contracts available. Come back later.</div>';
     ui.missionList.querySelectorAll('[data-accept]').forEach(function(b){ b.onclick=function(){ accept(b.getAttribute('data-accept')); }; });
-  }
     var s=state.ship; var ups=[{key:'engine',name:'Engine Mk II',desc:'+18% thrust / max speed',cost:200,level:s.engine},{key:'gun',name:'Rail Bolts',desc:'+18% bullet speed',cost:180,level:s.gun},{key:'hold',name:'Cargo Hold+',desc:'+10 cargo capacity',cost:150,level:s.hold},{key:'shield',name:'Shield Lattice',desc:'+10 hull & longer invuln',cost:220,level:s.shield}];
     ui.upgrades.innerHTML=ups.map(function(u){ var maxed=u.level>=4; var action=maxed?'<button class="btn" disabled>Maxed</button>':'<button class="btn" data-up="'+u.key+'">Buy</button>'; return '<div class="item"><div><b>'+u.name+'</b> <span class="badge">Lv '+u.level+'/4</span> <span class="badge">$'+u.cost+'</span><div style="font-size:12px;color:var(--muted)">'+u.desc+'</div></div>'+action+'</div>'; }).join('');
     ui.upgrades.querySelectorAll('[data-up]').forEach(function(b){ b.onclick=function(){ buyUpgrade(b.getAttribute('data-up')); }; });
