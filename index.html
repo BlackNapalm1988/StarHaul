@@ -47,11 +47,16 @@
     #leaderboard th,#leaderboard td{padding:6px 8px;text-align:left;border-bottom:1px solid rgba(255,255,255,.08)}
     #pauseOverlay .actions{display:flex;gap:8px;margin-top:10px}
     #gameOver .actions{display:flex;gap:8px;margin-top:10px}
+
+    /* life bar */
+    #lifeBar{position:absolute;left:0;right:0;top:0;height:8px;background:rgba(255,255,255,.08);z-index:2;}
+    #lifeFill{height:100%;width:100%;background:var(--accent2);}
   </style>
 </head>
 <body>
   <div class="wrap">
     <canvas id="game" width="960" height="600"></canvas>
+    <div id="lifeBar"><div id="lifeFill"></div></div>
 
     <div id="hud">
       <div class="pill stat">$<span id="credits">0</span> · Fuel <span id="fuel">0</span> · Ammo <span id="ammo">0</span> · Cargo <span id="cargo">0</span>/<span id="cargoMax">0</span> · Lives <span id="lives">3</span> · Rep <span id="rep">0</span></div>
@@ -83,6 +88,7 @@
       </div>
       <div class="dock" id="missions">
         <h3>Contracts</h3>
+        <div class="row"><button class="btn" id="setHomeBtn">Set Home</button></div>
         <div class="list" id="missionList"></div>
         <div class="row"><button class="btn" id="undockBtn">Undock (E)</button></div>
       </div>
@@ -187,7 +193,7 @@ window.addEventListener('DOMContentLoaded', function(){
     hud:$('#hud'), dockUI:$('#dockUI'), radar:$('#radar'), missionLog:$('#missionLog'), missionLogList:$('#missionLogList'),
     credits:$('#credits'), fuel:$('#fuel'), ammo:$('#ammo'), cargo:$('#cargo'), cargoMax:$('#cargoMax'), lives:$('#lives'), rep:$('#rep'), missionCount:$('#missionCount'),
     pauseBtn:$('#pauseBtn'), restartBtn:$('#restartBtn'), missionPill:$('#missionPill'), toasts:$('#toasts'),
-    missionList:$('#missionList'), upgrades:$('#upgrades'), undockBtn:$('#undockBtn'),
+    missionList:$('#missionList'), upgrades:$('#upgrades'), undockBtn:$('#undockBtn'), setHomeBtn:$('#setHomeBtn'), lifeFill:$('#lifeFill'),
     startScreen:$('#startScreen'), newGameBtn:$('#newGameBtn'), viewScoresBtn:$('#viewScoresBtn'), quitBtn:$('#quitBtn'), scoresBody:$('#scoresBody'), leaderboard:$('#leaderboard'),
     pauseOverlay:$('#pauseOverlay'), resumeBtn:$('#resumeBtn'), pauseRestartBtn:$('#pauseRestartBtn'), toMenuBtn:$('#toMenuBtn'), pauseStats:$('#pauseStats'),
     gameOver:$('#gameOver'), finalStats:$('#finalStats'), pilotName:$('#pilotName'), saveScoreBtn:$('#saveScoreBtn'), goMenuBtn:$('#goMenuBtn')
@@ -235,22 +241,25 @@ window.addEventListener('DOMContentLoaded', function(){
 
   function farFromAll(x,y,blackholes,planets){ if(blackholes){ for(var i=0;i<blackholes.length;i++){ var h=blackholes[i]; if(Math.hypot(x-h.x,y-h.y) < h.r + CFG.safety.fromBH) return false; } } if(planets){ for(var j=0;j<planets.length;j++){ var p=planets[j]; if(Math.hypot(x-p.x,y-p.y) < p.r + CFG.safety.fromPlanet) return false; } } if(state && state.stars){ for(var k=0;k<state.stars.length;k++){ var s=state.stars[k]; if(Math.hypot(x-s.x,y-s.y) < s.r + CFG.safety.fromStar) return false; } } return true; }
   function farFromStars(x,y,stars){ if(!stars) return true; for(var i=0;i<stars.length;i++){ var s=stars[i]; if(Math.hypot(x-s.x,y-s.y) < s.r + CFG.safety.fromStar) return false; } return true; }
-  function safePlaceShip(){ var tries=0; var x=WORLD.w/2,y=WORLD.h/2; while(tries<180){ if(farFromAll(x,y,state.blackholes,state.planets)) break; x=rand(180,WORLD.w-180); y=rand(180,WORLD.h-180); tries++; } Object.assign(state.ship,{x:x,y:y,vx:0,vy:0}); }
   function nearestPlanet(x,y){ var best=null,bd=1e9; for(var i=0;i<state.planets.length;i++){ var p=state.planets[i]; var d=Math.hypot(x-p.x,y-p.y); if(d<bd){ bd=d; best=p; } } return {planet:best,dist:bd}; }
 
   function reset(){
     state={ ship:newShip(), credits:CFG.economy.startCredits, fuel:CFG.economy.fuelStart, ammo:CFG.economy.ammoStart,
       cargo:0, cargoMax:CFG.economy.cargoMax, bullets:[], particles:[], asteroids:[], planets:[], blackholes:[],
       pirates:[], missions:[], score:0, gameOver:false, spawnTimer:900, reputation:0, tracked:null,
-      gates:[], fow:new Set(), docked:null, stars:[], towed:false, nebulae:[], discovered:new Set() };
+      gates:[], fow:new Set(), docked:null, stars:[], towed:false, nebulae:[], discovered:new Set(), home:null };
     for(var i=0;i<CFG.planets;i++) state.planets.push(makePlanet(i));
     for(var j=0;j<CFG.blackholes;j++){ var bh; var tries=0; do{ bh=makeBlackHole(); tries++; } while(!farFromAll(bh.x,bh.y,state.blackholes,state.planets) && tries<200); state.blackholes.push(bh); }
     for(var s=0;s<CFG.stars;s++){ state.stars.push(makeStar()); }
     for(var n=0;n<CFG.hazards.nebulae;n++){ state.nebulae.push(makeNebula()); }
     for(var k=0;k<CFG.asteroid.count;k++){ var ax,ay; do{ ax=rand(0,WORLD.w); ay=rand(0,WORLD.h);} while(!farFromAll(ax,ay,state.blackholes,state.planets) ); state.asteroids.push(makeAsteroid(ax,ay,CFG.asteroid.sizes[0])); }
     for(var g=0;g<CFG.gates;g++) state.gates.push(makeGate(g));
-    safePlaceShip();
     refreshOffers(true);
+    // choose random home planet and start docked there
+    state.home = state.planets[irand(0,state.planets.length)];
+    state.ship.x = state.home.x;
+    state.ship.y = state.home.y;
+    dock(state.home);
     updateHUD();
     updateCamera();
   }
@@ -262,8 +271,8 @@ window.addEventListener('DOMContentLoaded', function(){
   function refreshOffers(initial){ if(!state) return; state.planets.forEach(function(pl){ if(!initial) pl.offers=pl.offers.filter(function(o){return o.timeLeft>0;}); ensureOffersForPlanet(pl.id); }); offerTimer = CFG.contracts.refreshEvery; renderDock(); }
 
   function nearbyPlanet(){ for(var i=0;i<state.planets.length;i++){ var pl=state.planets[i]; if(Math.hypot(pl.x-state.ship.x,pl.y-state.ship.y)<pl.r+32) return pl; } }
-  function dock(p){ if(!state) return; state.docked=p; paused=true; ensureOffersForPlanet(p.id); ui.dockUI.style.display='flex'; renderDock(); tryDeliver(); toast('Docked at '+p.name); }
-  function undock(){ if(!state) return; paused=false; state.docked=null; ui.dockUI.style.display='none'; }
+  function dock(p){ if(!state) return; state.docked=p; paused=true; state.ship.x=p.x; state.ship.y=p.y; state.ship.vx=0; state.ship.vy=0; ensureOffersForPlanet(p.id); ui.dockUI.style.display='flex'; renderDock(); tryDeliver(); toast('Docked at '+p.name); }
+  function undock(){ if(!state) return; var p=state.docked; paused=false; state.docked=null; ui.dockUI.style.display='none'; if(p){ var ang=rand(0,Math.PI*2); state.ship.x=p.x+Math.cos(ang)*(p.r+state.ship.r+6); state.ship.y=p.y+Math.sin(ang)*(p.r+state.ship.r+6); }}
   function dockToggle(){ if(!state) return; var p=nearbyPlanet(); if(!p) return; if(state.docked) undock(); else dock(p); }
 
   function marketBuy(what){ if(!state || !state.docked) return; if(what==='fuel'){ var cost1=2*50; if(state.credits>=cost1){ state.credits-=cost1; state.fuel+=50; state.towed=false; } }
@@ -271,6 +280,8 @@ window.addEventListener('DOMContentLoaded', function(){
     if(what==='repair'){ var cost3=20; if(state.credits>=cost3 && state.ship.hull<CFG.ship.hullMax){ state.credits-=cost3; state.ship.hull=clamp(state.ship.hull+10,0,CFG.ship.hullMax); } }
     updateHUD(); renderDock(); tryDeliver(); }
   function buyUpgrade(key){ if(!state) return; var s=state.ship; var costs={engine:200,gun:180,hold:150,shield:220}; if(s[key]===undefined) return; if(s[key]>=4){ toast('Upgrade '+key+' is maxed'); return; } if(state.credits<costs[key]) return; state.credits-=costs[key]; if(key==='engine'){ s.engine++; CFG.ship.accel*=1.18; CFG.ship.maxSpeed*=1.18; } if(key==='gun'){ s.gun++; CFG.bullets.speed*=1.18; } if(key==='hold'){ s.hold++; state.cargoMax+=10; } if(key==='shield'){ s.shield++; CFG.ship.hullMax+=10; s.hull=CFG.ship.hullMax; s.inv=Math.max(s.inv,160); } updateHUD(); renderDock(); }
+
+  function setHome(){ if(!state || !state.docked) return; state.home = state.docked; toast('Home set to '+state.home.name); renderDock(); }
 
   function keybinds(){
     window.addEventListener('keydown',function(e){ if(!running||!state) return; if(e.repeat) return; var s=state.ship; switch(e.code){
@@ -290,8 +301,21 @@ window.addEventListener('DOMContentLoaded', function(){
     }});
   }
 
-  function updateHUD(){ if(!state) return; ui.credits.textContent=Math.floor(state.credits); ui.fuel.textContent=Math.floor(state.fuel); ui.ammo.textContent=state.ammo; ui.cargo.textContent=state.cargo; ui.cargoMax.textContent=state.cargoMax; ui.lives.textContent=state.ship.lives; ui.missionCount.textContent=state.missions.length; ui.rep.textContent=state.reputation; renderMissionLog(); if(paused) updatePauseStats(); }
-  function renderDock(){ if(!state || !state.docked) return; var here=state.docked; var hereOffers=planetById(here.id).offers; ui.missionList.innerHTML = hereOffers.map(function(m){ var locked=state.reputation<m.reqRep; var lock=locked?'<span class="badge" style="background:rgba(255,107,107,.15);color:#ffb3b3">Rep '+m.reqRep+' req.</span>':''; var btn=locked?'<button class="btn" disabled>Locked</button>':'<button class="btn" data-accept="'+m.id+'">Accept</button>'; return '<div class="item"><div><b>Deliver '+m.qty+'</b> to <i>'+planetById(m.to).name+'</i> <span class="badge">$'+m.reward+'</span> '+lock+'</div>'+btn+'</div>'; }).join('') || '<div class="item">No contracts available. Come back later.</div>'; ui.missionList.querySelectorAll('[data-accept]').forEach(function(b){ b.onclick=function(){ accept(b.getAttribute('data-accept')); }; });
+  function updateHUD(){ if(!state) return; ui.credits.textContent=Math.floor(state.credits); ui.fuel.textContent=Math.floor(state.fuel); ui.ammo.textContent=state.ammo; ui.cargo.textContent=state.cargo; ui.cargoMax.textContent=state.cargoMax; ui.lives.textContent=state.ship.lives; ui.missionCount.textContent=state.missions.length; ui.rep.textContent=state.reputation; if(ui.lifeFill){ ui.lifeFill.style.width=(state.ship.hull/state.ship.hullMax*100)+'%'; } renderMissionLog(); if(paused) updatePauseStats(); }
+  function renderDock(){
+    if(!state || !state.docked) return;
+    var here=state.docked;
+    ui.setHomeBtn.textContent = (state.home && state.home.id===here.id) ? 'Home Planet' : 'Set Home';
+    ui.setHomeBtn.disabled = !!(state.home && state.home.id===here.id);
+    var hereOffers=planetById(here.id).offers;
+    ui.missionList.innerHTML = hereOffers.map(function(m){
+      var locked=state.reputation<m.reqRep;
+      var lock=locked?'<span class="badge" style="background:rgba(255,107,107,.15);color:#ffb3b3">Rep '+m.reqRep+' req.</span>':'';
+      var btn=locked?'<button class="btn" disabled>Locked</button>':'<button class="btn" data-accept="'+m.id+'">Accept</button>';
+      return '<div class="item"><div><b>Deliver '+m.qty+'</b> to <i>'+planetById(m.to).name+'</i> <span class="badge">$'+m.reward+'</span> '+lock+'</div>'+btn+'</div>';
+    }).join('') || '<div class="item">No contracts available. Come back later.</div>';
+    ui.missionList.querySelectorAll('[data-accept]').forEach(function(b){ b.onclick=function(){ accept(b.getAttribute('data-accept')); }; });
+  }
     var s=state.ship; var ups=[{key:'engine',name:'Engine Mk II',desc:'+18% thrust / max speed',cost:200,level:s.engine},{key:'gun',name:'Rail Bolts',desc:'+18% bullet speed',cost:180,level:s.gun},{key:'hold',name:'Cargo Hold+',desc:'+10 cargo capacity',cost:150,level:s.hold},{key:'shield',name:'Shield Lattice',desc:'+10 hull & longer invuln',cost:220,level:s.shield}];
     ui.upgrades.innerHTML=ups.map(function(u){ var maxed=u.level>=4; var action=maxed?'<button class="btn" disabled>Maxed</button>':'<button class="btn" data-up="'+u.key+'">Buy</button>'; return '<div class="item"><div><b>'+u.name+'</b> <span class="badge">Lv '+u.level+'/4</span> <span class="badge">$'+u.cost+'</span><div style="font-size:12px;color:var(--muted)">'+u.desc+'</div></div>'+action+'</div>'; }).join('');
     ui.upgrades.querySelectorAll('[data-up]').forEach(function(b){ b.onclick=function(){ buyUpgrade(b.getAttribute('data-up')); }; });
@@ -306,7 +330,23 @@ window.addEventListener('DOMContentLoaded', function(){
   function nearbyGate(){ if(!state) return null; for(var i=0;i<state.gates.length;i++){ var g=state.gates[i]; if(Math.hypot(g.x-state.ship.x,g.y-state.ship.y)<g.r+30) return g; } }
 
   function damage(d){ if(!state) return; var s=state.ship; if(s.inv>0) return; s.hull-=d; explode(s.x,s.y,10); if(s.hull<=0) killShip(); }
-  function killShip(){ if(!state) return; var s=state.ship; if(s.inv>0) return; explode(s.x,s.y,26); s.lives--; if(s.lives<0){ return gameOver(); } Object.assign(s,{vx:0,vy:0,a:-Math.PI/2,inv:CFG.ship.invuln,blink:CFG.ship.blink,hull:CFG.ship.hullMax}); safePlaceShip(); updateCamera(); updateHUD(); }
+  function killShip(){
+    if(!state) return;
+    var s=state.ship; if(s.inv>0) return;
+    explode(s.x,s.y,26);
+    s.lives--;
+    if(s.lives<0){ return gameOver(); }
+    state.cargo=0;
+    state.missions=[];
+    state.reputation=Math.max(0,state.reputation-2);
+    toast('Ship lost! Cargo and missions forfeited. Rep -2');
+    state.tracked=null;
+    Object.assign(s,{vx:0,vy:0,a:-Math.PI/2,inv:CFG.ship.invuln,blink:CFG.ship.blink,hull:CFG.ship.hullMax});
+    var home=state.home || state.planets[0];
+    state.ship.x=home.x; state.ship.y=home.y;
+    dock(home);
+    updateCamera(); updateHUD();
+  }
   function explode(x,y,count){ if(!state) return; count=count||16; for(var i=0;i<count;i++){ var ang=rand(0,Math.PI*2); state.particles.push({x:x,y:y,vx:Math.cos(ang)*rand(.5,3.2),vy:Math.sin(ang)*rand(.5,3.2),life:rand(18,36),r:rand(1,2.5),h:rand(190,220)}); } }
 
   function pirateSteal(p){ if(!state) return; var creditsSteal=Math.min(state.credits, Math.floor(rand(CFG.pirates.steal.credits[0], CFG.pirates.steal.credits[1])) ); var cargoSteal=Math.min(state.cargo, irand(CFG.pirates.steal.cargo[0], CFG.pirates.steal.cargo[1])); state.credits-=creditsSteal; state.cargo-=cargoSteal; state.reputation=Math.max(0,state.reputation-CFG.pirates.repPenalty); toast('Pirates boarded! -$'+creditsSteal+', -'+cargoSteal+' cargo, Rep -'+CFG.pirates.repPenalty); updateHUD(); var dx=state.ship.x-p.x, dy=state.ship.y-p.y; var d=Math.hypot(dx,dy)||1; p.vx-=(dx/d)*2; p.vy-=(dy/d)*2; }
@@ -382,16 +422,17 @@ window.addEventListener('DOMContentLoaded', function(){
     state.particles.forEach(function(p){ p.x+=p.vx*dt; p.y+=p.vy*dt; p.life-=1*dt; }); state.particles=state.particles.filter(function(p){return p.life>0;});
 
     // bullet collisions
-    for(var ai=state.asteroids.length-1;ai>=0;ai--){ var AA=state.asteroids[ai]; var hit=false; for(var bj=state.bullets.length-1;bj>=0;bj--){ var b=state.bullets[bj]; if(b.enemy) continue; if(Math.hypot(AA.x-b.x,AA.y-b.y)<AA.r){ state.bullets.splice(bj,1); state.asteroids.splice(ai,1); explode(AA.x,AA.y,12); state.credits+=10; var pcs=splitAst(AA); state.asteroids.push.apply(state.asteroids,pcs); updateHUD(); hit=true; break; } } if(hit) continue; if(state.ship.inv<=0 && Math.hypot(AA.x-state.ship.x,AA.y-state.ship.y)<AA.r+state.ship.r*.8){ damage(10); } }
+    for(var ai=state.asteroids.length-1;ai>=0;ai--){ var AA=state.asteroids[ai]; var hit=false; for(var bj=state.bullets.length-1;bj>=0;bj--){ var b=state.bullets[bj]; if(b.enemy) continue; if(Math.hypot(AA.x-b.x,AA.y-b.y)<AA.r){ state.bullets.splice(bj,1); state.asteroids.splice(ai,1); explode(AA.x,AA.y,12); state.credits+=10; var pcs=splitAst(AA); state.asteroids.push.apply(state.asteroids,pcs); updateHUD(); hit=true; break; } } if(hit) continue; if(state.ship.inv<=0 && Math.hypot(AA.x-state.ship.x,AA.y-state.ship.y)<AA.r+state.ship.r*.8){ var dmg = AA.r>=CFG.asteroid.sizes[0]?15:(AA.r>=CFG.asteroid.sizes[1]?10:5); damage(dmg); } }
     for(var pk=state.pirates.length-1;pk>=0;pk--){ var P=state.pirates[pk]; for(var bj2=state.bullets.length-1;bj2>=0;bj2--){ var bb=state.bullets[bj2]; if(bb.enemy) continue; if(Math.hypot(P.x-bb.x,P.y-bb.y)<P.r+3){ state.bullets.splice(bj2,1); P.hp-=6; explode(P.x,P.y,8); if(P.hp<=0){ state.pirates.splice(pk,1); state.credits+=40; updateHUD(); } break; } } if(state.ship.inv<=0 && Math.hypot(P.x-state.ship.x,P.y-state.ship.y)<P.r+state.ship.r*.8){ damage(12); } }
 
-    for(var ee=state.bullets.length-1;ee>=0;ee--){ var EB=state.bullets[ee]; if(EB.enemy && Math.hypot(EB.x-state.ship.x,EB.y-state.ship.y)<state.ship.r+2){ state.bullets.splice(ee,1); damage(8); } }
+    for(var ee=state.bullets.length-1;ee>=0;ee--){ var EB=state.bullets[ee]; if(EB.enemy && Math.hypot(EB.x-state.ship.x,EB.y-state.ship.y)<state.ship.r+2){ state.bullets.splice(ee,1); damage(3); } }
 
     state.missions.forEach(function(m){ m.timeLeft-=1*dt; }); state.missions=state.missions.filter(function(m){return m.timeLeft>0;});
     offerTimer-=1*dt; if(offerTimer<=0) refreshOffers(false);
 
     checkFuelTow();
     if(state.docked) tryDeliver();
+    if(state.credits<=0 && state.ammo<=0 && state.fuel<=0){ return gameOver(); }
 
     // Star lifecycle with proximity-based warnings
     for(var sidx=state.stars.length-1; sidx>=0; sidx--){ var SS=state.stars[sidx]; SS.life -= 1*dt; var distToShip=Math.hypot(SS.x-state.ship.x, SS.y-state.ship.y);
@@ -476,7 +517,7 @@ window.addEventListener('DOMContentLoaded', function(){
   function discoverVisiblePlanets(){ for(var i=0;i<state.planets.length;i++){ var p=state.planets[i]; if(state.discovered.has(p.id)) continue; if(p.x>cam.x-p.r && p.x<cam.x+W+p.r && p.y>cam.y-p.r && p.y<cam.y+H+p.r){ state.discovered.add(p.id); toast('📡 Charted '+p.name); } } }
 
   function updateCamera(){ cam.x=clamp(state.ship.x - W/2, 0, WORLD.w - W); cam.y=clamp(state.ship.y - H/2, 0, WORLD.h - H); }
-  function loop(ts){ if(!running) return; if(!lastTime){ lastTime=ts; } var dt=(ts-lastTime)/(1000/60); if(dt<=0||dt>5) dt=1; lastTime=ts; if(!paused && !state.gameOver){ update(dt); draw(); } rAF(loop); }
+  function loop(ts){ if(!running) return; if(!lastTime){ lastTime=ts; } var dt=(ts-lastTime)/(1000/60); if(dt<=0||dt>5) dt=1; lastTime=ts; if(!paused && !state.gameOver){ update(dt); } if(state) draw(); rAF(loop); }
 
   function showPause(){ if(!running) return; paused=true; ui.pauseOverlay.classList.remove('hidden'); updatePauseStats(); }
   function hidePause(){ ui.pauseOverlay.classList.add('hidden'); paused=false; }
@@ -484,8 +525,8 @@ window.addEventListener('DOMContentLoaded', function(){
 
   function showGameUI(flag){ canvas.classList.toggle('hidden', !flag); ui.hud.classList.toggle('hidden', !flag); ui.radar.classList.toggle('hidden', !flag); }
   function showMenu(){ running=false; paused=false; showGameUI(false); ui.dockUI.style.display='none'; ui.missionLog.style.display='none'; ui.startScreen.classList.remove('hidden'); ui.leaderboard.classList.add('hidden'); ui.gameOver.classList.add('hidden'); ui.pauseOverlay.classList.add('hidden'); }
-  function startNewGame(){ reset(); lastTime=0; running=true; paused=false; ui.startScreen.classList.add('hidden'); ui.gameOver.classList.add('hidden'); showGameUI(true); rAF(loop); }
-  function restartGame(){ if(!running){ return startNewGame(); } reset(); lastTime=0; paused=false; }
+  function startNewGame(){ reset(); lastTime=0; running=true; paused=true; ui.startScreen.classList.add('hidden'); ui.gameOver.classList.add('hidden'); showGameUI(true); rAF(loop); }
+  function restartGame(){ if(!running){ return startNewGame(); } reset(); lastTime=0; paused=true; }
   function togglePause(){ if(!running) return; if(paused) hidePause(); else showPause(); }
 
   function gameOver(){ running=false; state.gameOver=true; var net=Math.max(0, Math.floor(state.credits - CFG.economy.startCredits)); ui.finalStats.textContent='Final Credits: $'+Math.floor(state.credits)+' (Net +$'+net+') • Rep '+state.reputation; ui.pilotName.value=(localStorage.getItem('starhaul.lastName')||'Pilot'); showGameUI(false); ui.gameOver.classList.remove('hidden'); }
@@ -518,6 +559,7 @@ window.addEventListener('DOMContentLoaded', function(){
   ui.pauseBtn.addEventListener('click', showPause);
   ui.restartBtn.addEventListener('click', restartGame);
   ui.undockBtn.addEventListener('click', undock);
+  ui.setHomeBtn.addEventListener('click', setHome);
   ui.missionPill.addEventListener('click', function(){ ui.missionLog.style.display = ui.missionLog.style.display==='none'?'block':'none'; renderMissionLog(); });
   ui.newGameBtn.addEventListener('click', startNewGame);
   ui.viewScoresBtn.addEventListener('click', function(){ ui.leaderboard.classList.toggle('hidden'); renderScores(); });
