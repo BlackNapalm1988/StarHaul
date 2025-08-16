@@ -228,7 +228,15 @@ document.addEventListener('DOMContentLoaded', function(){
 
   var state=null, paused=false, running=false, lastTime=0, offerTimer=0, frame=0;
 
-  function newShip(){ return{ x:WORLD.w/2,y:WORLD.h/2,vx:0,vy:0,a:-Math.PI/2,turn:0,thrust:false,r:CFG.ship.r,inv:CFG.ship.invuln,blink:CFG.ship.blink,lives:3,hull:CFG.ship.hullMax,canShoot:true,cool:0,engine:1,hold:0,shield:0,gun:1,trail:[] }; }
+  function newShip(){
+    return {
+      x:WORLD.w/2, y:WORLD.h/2, vx:0, vy:0, a:-Math.PI/2,
+      turn:0, thrust:false, r:CFG.ship.r,
+      inv:CFG.ship.invuln, blink:0, justSpawned:true,
+      lives:3, hull:CFG.ship.hullMax, canShoot:true, cool:0,
+      engine:1, hold:0, shield:0, gun:1, trail:[]
+    };
+  }
   function makeAsteroid(x,y,r){ var n=irand(CFG.asteroid.verts[0],CFG.asteroid.verts[1]); var offs=Array.from({length:n},function(){return rand(1-CFG.asteroid.jag,1+CFG.asteroid.jag)}); var vel=rand(CFG.asteroid.speed[0],CFG.asteroid.speed[1]); var va=rand(0,Math.PI*2); return {x:x,y:y,r:r,vx:Math.cos(va)*vel,vy:Math.sin(va)*vel,a:rand(0,Math.PI*2),spin:rand(-.008,.008),offs:offs}; }
   function splitAst(a){ var res=[]; if(a.r>CFG.asteroid.sizes[2]+1){ var next=a.r===CFG.asteroid.sizes[0]?CFG.asteroid.sizes[1]:CFG.asteroid.sizes[2]; for(var i=0;i<2;i++){ var p=makeAsteroid(a.x+rand(-8,8),a.y+rand(-8,8),next); p.vx+=a.vx*.25; p.vy+=a.vy*.25; res.push(p); } } return res; }
   function makePlanet(i){ var types=["rocky","ocean","ice","lava","gas","industrial"]; var type=pick(types); var r=irand(28,80); var x,y,tries=0; do{ x=rand(200,WORLD.w-200); y=rand(200,WORLD.h-200); tries++; } while((Math.hypot(x-WORLD.w/2,y-WORLD.h/2)<360 || !farFromAll(x,y,state.blackholes,state.planets)) && tries<200); var names=["Eden","Kovax","Aria","Tarsis","Veld","Khepri","Nysa","Osiris","Ixia","Carina","Prax","Rhea"]; var p={ id:i,x:x,y:y,r:r,type:type,rot:rand(0,Math.PI*2),rotSpeed:rand(-0.0012,0.0012), hasRings:(Math.random()<0.25)&&r>40, name:names[i%names.length]+"-"+(100+i), stock:{fuel:irand(200,600),ammo:irand(50,150)}, prices:{fuel:2+rand(-.3,.4),ammo:5+rand(-1,1),repair:20}, offers:[] }; var tex=bakePlanetTexture(p); p.tex=tex.planet; p.ringsTex=tex.rings; return p; }
@@ -328,7 +336,20 @@ document.addEventListener('DOMContentLoaded', function(){
   function useGate(){ if(!state) return; var g=nearbyGate(); if(!g) return; var link=state.gates.find(function(x){return x.id===g.link;}); if(!link) return; state.ship.x=link.x+40; state.ship.y=link.y+40; state.ship.vx*=0.2; state.ship.vy*=0.2; updateCamera(); toast('Warped via gate'); }
   function nearbyGate(){ if(!state) return null; for(var i=0;i<state.gates.length;i++){ var g=state.gates[i]; if(Math.hypot(g.x-state.ship.x,g.y-state.ship.y)<g.r+30) return g; } }
 
-  function damage(d){ if(!state) return; var s=state.ship; if(s.inv>0) return; s.hull-=d; explode(s.x,s.y,10); if(s.hull<=0) killShip(); }
+  function damage(d){
+    if(!state) return;
+    var s=state.ship;
+    if(s.inv>0) return;
+    s.hull -= d;
+    explode(s.x,s.y,10);
+    if(s.hull<=0){
+      killShip();
+    } else {
+      s.inv = CFG.ship.invuln;
+      s.blink = CFG.ship.blink;
+      s.justSpawned = false;
+    }
+  }
   function killShip(){
     if(!state) return;
     var s=state.ship; if(s.inv>0) return;
@@ -340,7 +361,11 @@ document.addEventListener('DOMContentLoaded', function(){
     state.reputation=Math.max(0,state.reputation-2);
     toast('Ship lost! Cargo and missions forfeited. Rep -2');
     state.tracked=null;
-    Object.assign(s,{vx:0,vy:0,a:-Math.PI/2,inv:CFG.ship.invuln,blink:CFG.ship.blink,hull:CFG.ship.hullMax});
+    Object.assign(s,{
+      vx:0, vy:0, a:-Math.PI/2,
+      inv:CFG.ship.invuln, blink:0, justSpawned:true,
+      hull:CFG.ship.hullMax
+    });
     var home=state.home || state.planets[0];
     state.ship.x=home.x; state.ship.y=home.y;
     dock(home);
@@ -355,13 +380,20 @@ document.addEventListener('DOMContentLoaded', function(){
   function update(dt){
     var s=state.ship; if(s.cool>0) s.cool--;
     s.a += s.turn*CFG.ship.turn*dt;
+    if(s.thrust) s.justSpawned=false;
     if(s.thrust && state.fuel>0){ s.vx += Math.cos(s.a)*CFG.ship.accel*dt; s.vy += Math.sin(s.a)*CFG.ship.accel*dt; state.fuel -= CFG.economy.fuelUse*dt; if(state.fuel<0) state.fuel=0; updateHUD(); }
     // Nebula slow & burn
     state.inNebula=false; for(var ni=0; ni<state.nebulae.length; ni++){ var nb=state.nebulae[ni]; var nd=Math.hypot(s.x-nb.x, s.y-nb.y); if(nd < nb.r){ s.vx*=0.985; s.vy*=0.985; state.fuel = Math.max(0,state.fuel - 0.02*dt); state.inNebula=true; } }
 
     s.vx*=CFG.ship.friction; s.vy*=CFG.ship.friction; var sp=Math.hypot(s.vx,s.vy); var max=CFG.ship.maxSpeed; if(sp>max){ s.vx=(s.vx/sp)*max; s.vy=(s.vy/sp)*max; }
     s.x+=s.vx*dt; s.y+=s.vy*dt; s.x=clamp(s.x, s.r, WORLD.w - s.r); s.y=clamp(s.y, s.r, WORLD.h - s.r);
-    if(s.inv>0){ s.inv-=1*dt; s.blink-=1*dt; if(s.blink<=0) s.blink=CFG.ship.blink; }
+    if(s.inv>0){
+      s.inv-=1*dt;
+      if(s.blink>0){
+        s.blink-=1*dt;
+        if(s.blink<=0) s.blink=CFG.ship.blink;
+      }
+    }
 
     if(s.thrust){ s.trail.push({x:s.x-Math.cos(s.a)*s.r*0.8, y:s.y-Math.sin(s.a)*s.r*0.8, life:22}); if(s.trail.length>40)s.trail.shift(); }
     s.trail.forEach(function(p){ p.life-=1*dt; }); s.trail=s.trail.filter(function(p){return p.life>0;});
@@ -481,7 +513,7 @@ document.addEventListener('DOMContentLoaded', function(){
     state.bullets.forEach(function(b){ ctx.fillStyle=b.enemy?'#ffb0b0':'#ffffff'; ctx.shadowBlur=6; ctx.shadowColor=b.enemy?'#ff8a8a':'#6df2d6'; ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0; });
 
     // ship
-    var s=state.ship; var flicker=s.inv>0 && s.blink>CFG.ship.blink/2; if(!(flicker && Math.floor(s.inv)%2===0)){
+    var s=state.ship; var flicker=s.inv>0 && s.blink>CFG.ship.blink/2 && !s.justSpawned; if(!(flicker && Math.floor(s.inv)%2===0)){
       s.trail.forEach(function(t){ var alpha=clamp(t.life/22,0,1); ctx.fillStyle='rgba(109,242,214,'+(alpha*.35)+')'; ctx.beginPath(); ctx.arc(t.x,t.y,3*(alpha+.2),0,Math.PI*2); ctx.fill(); });
       ctx.save(); ctx.translate(s.x,s.y); ctx.rotate(s.a); var body=ctx.createLinearGradient(-s.r,s.r,s.r,-s.r); body.addColorStop(0,'#2a3448'); body.addColorStop(1,'#3b4a66'); ctx.fillStyle=body; ctx.strokeStyle='#9cebdc'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(s.r,0); ctx.lineTo(-s.r*.7,-s.r*.65); ctx.lineTo(-s.r,0); ctx.lineTo(-s.r*.7,s.r*.65); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.rect(-s.r*.95,-6, -11,12); ctx.stroke(); ctx.restore();
     }
