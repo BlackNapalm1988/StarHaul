@@ -59,7 +59,7 @@
     <div id="lifeBar"><div id="lifeFill"></div></div>
 
     <div id="hud">
-      <div class="pill stat">$<span id="credits">0</span> · Fuel <span id="fuel">0</span> · Ammo <span id="ammo">0</span> · Cargo <span id="cargo">0</span>/<span id="cargoMax">0</span> · Lives <span id="lives">3</span> · Rep <span id="rep">0</span></div>
+      <div class="pill stat">$<span id="credits">0</span> · Fuel <span id="fuel">0</span> · Ammo <span id="ammo">0</span> · Cargo <span id="cargo">0</span>/<span id="cargoMax">0</span> · Hull <span id="hull">100</span>/<span id="hullMax">100</span> · Lives <span id="lives">3</span> · Rep <span id="rep">0</span></div>
       <div class="pill stat" id="missionPill" title="Mission Log (click)">Missions: <span id="missionCount">0</span></div>
       <div class="pill"><button class="btn" id="pauseBtn">Pause</button> <button class="btn" id="restartBtn">Restart</button></div>
     </div>
@@ -191,9 +191,9 @@ document.addEventListener('DOMContentLoaded', function(){
 
   var ui={
     hud:$('#hud'), dockUI:$('#dockUI'), radar:$('#radar'), missionLog:$('#missionLog'), missionLogList:$('#missionLogList'),
-    credits:$('#credits'), fuel:$('#fuel'), ammo:$('#ammo'), cargo:$('#cargo'), cargoMax:$('#cargoMax'), lives:$('#lives'), rep:$('#rep'), missionCount:$('#missionCount'),
+      credits:$('#credits'), fuel:$('#fuel'), ammo:$('#ammo'), cargo:$('#cargo'), cargoMax:$('#cargoMax'), hull:$('#hull'), hullMax:$('#hullMax'), lives:$('#lives'), rep:$('#rep'), missionCount:$('#missionCount'),
     pauseBtn:$('#pauseBtn'), restartBtn:$('#restartBtn'), missionPill:$('#missionPill'), toasts:$('#toasts'),
-    missionList:$('#missionList'), upgrades:$('#upgrades'), undockBtn:$('#undockBtn'), setHomeBtn:$('#setHomeBtn'), lifeFill:$('#lifeFill'),
+      missionList:$('#missionList'), upgrades:$('#upgrades'), undockBtn:$('#undockBtn'), setHomeBtn:$('#setHomeBtn'), lifeFill:$('#lifeFill'),
     startScreen:$('#startScreen'), newGameBtn:$('#newGameBtn'), viewScoresBtn:$('#viewScoresBtn'), quitBtn:$('#quitBtn'), scoresBody:$('#scoresBody'), leaderboard:$('#leaderboard'),
     pauseOverlay:$('#pauseOverlay'), resumeBtn:$('#resumeBtn'), pauseRestartBtn:$('#pauseRestartBtn'), toMenuBtn:$('#toMenuBtn'), pauseStats:$('#pauseStats'),
     gameOver:$('#gameOver'), finalStats:$('#finalStats'), pilotName:$('#pilotName'), saveScoreBtn:$('#saveScoreBtn'), goMenuBtn:$('#goMenuBtn')
@@ -202,7 +202,7 @@ document.addEventListener('DOMContentLoaded', function(){
   window.addEventListener('error', function(e){ try{ toast('JS error: '+((e && e.message)||'Script error')); console.error('StarHaul error:', e); }catch(_){} });
 
   var CFG={
-    ship:{r:20,accel:0.11,friction:.993,maxSpeed:6.2,turn:.08,invuln:120,blink:7,hullMax:30},
+      ship:{r:20,accel:0.11,friction:.993,maxSpeed:6.2,turn:.08,invuln:120,blink:7,hullMax:100},
     bullets:{max:7,speed:9.5,life:110,cool:9},
     economy:{startCredits:200,fuelStart:140,fuelUse:0.055,ammoStart:24,cargoMax:20},
     asteroid:{count:90,speed:[.22,.85],sizes:[24,16,10],jag:.35,verts:[8,14]},
@@ -232,11 +232,11 @@ document.addEventListener('DOMContentLoaded', function(){
     return {
       x:WORLD.w/2, y:WORLD.h/2, vx:0, vy:0, a:-Math.PI/2,
       turn:0, thrust:false, r:CFG.ship.r,
-      inv:CFG.ship.invuln, blink:0, justSpawned:true,
-      lives:3, hull:CFG.ship.hullMax, canShoot:true, cool:0,
-      engine:1, hold:0, shield:0, gun:1, trail:[],
-      centerX:0, centerY:0, centered:false
-    };
+        inv:CFG.ship.invuln, blink:0, justSpawned:true,
+        lives:3, hull:CFG.ship.hullMax, hullMax:CFG.ship.hullMax, canShoot:true, cool:0,
+        engine:1, hold:0, shield:0, gun:1, trail:[],
+        centerX:0, centerY:0, centered:false
+      };
   }
   function makeAsteroid(x,y,r){ var n=irand(CFG.asteroid.verts[0],CFG.asteroid.verts[1]); var offs=Array.from({length:n},function(){return rand(1-CFG.asteroid.jag,1+CFG.asteroid.jag)}); var vel=rand(CFG.asteroid.speed[0],CFG.asteroid.speed[1]); var va=rand(0,Math.PI*2); return {x:x,y:y,r:r,vx:Math.cos(va)*vel,vy:Math.sin(va)*vel,a:rand(0,Math.PI*2),spin:rand(-.008,.008),offs:offs}; }
   function splitAst(a){ var res=[]; if(a.r>CFG.asteroid.sizes[2]+1){ var next=a.r===CFG.asteroid.sizes[0]?CFG.asteroid.sizes[1]:CFG.asteroid.sizes[2]; for(var i=0;i<2;i++){ var p=makeAsteroid(a.x+rand(-8,8),a.y+rand(-8,8),next); p.vx+=a.vx*.25; p.vy+=a.vy*.25; res.push(p); } } return res; }
@@ -286,9 +286,9 @@ document.addEventListener('DOMContentLoaded', function(){
 
   function marketBuy(what){ if(!state || !state.docked) return; if(what==='fuel'){ var cost1=2*50; if(state.credits>=cost1){ state.credits-=cost1; state.fuel+=50; state.towed=false; } }
     if(what==='ammo'){ var cost2=5*10; if(state.credits>=cost2){ state.credits-=cost2; state.ammo+=10; } }
-    if(what==='repair'){ var cost3=20; if(state.credits>=cost3 && state.ship.hull<CFG.ship.hullMax){ state.credits-=cost3; state.ship.hull=clamp(state.ship.hull+10,0,CFG.ship.hullMax); } }
+      if(what==='repair'){ var cost3=20; if(state.credits>=cost3 && state.ship.hull<state.ship.hullMax){ state.credits-=cost3; state.ship.hull=clamp(state.ship.hull+10,0,state.ship.hullMax); } }
     updateHUD(); renderDock(); tryDeliver(); }
-  function buyUpgrade(key){ if(!state) return; var s=state.ship; var costs={engine:200,gun:180,hold:150,shield:220}; if(s[key]===undefined) return; if(s[key]>=4){ toast('Upgrade '+key+' is maxed'); return; } if(state.credits<costs[key]) return; state.credits-=costs[key]; if(key==='engine'){ s.engine++; CFG.ship.accel*=1.18; CFG.ship.maxSpeed*=1.18; } if(key==='gun'){ s.gun++; CFG.bullets.speed*=1.18; } if(key==='hold'){ s.hold++; state.cargoMax+=10; } if(key==='shield'){ s.shield++; CFG.ship.hullMax+=10; s.hull=CFG.ship.hullMax; s.inv=Math.max(s.inv,160); } updateHUD(); renderDock(); }
+    function buyUpgrade(key){ if(!state) return; var s=state.ship; var costs={engine:200,gun:180,hold:150,shield:220}; if(s[key]===undefined) return; if(s[key]>=4){ toast('Upgrade '+key+' is maxed'); return; } if(s.hull<s.hullMax){ toast('Repair hull before upgrading'); return; } if(state.credits<costs[key]) return; state.credits-=costs[key]; if(key==='engine'){ s.engine++; CFG.ship.accel*=1.18; CFG.ship.maxSpeed*=1.18; } if(key==='gun'){ s.gun++; CFG.bullets.speed*=1.18; } if(key==='hold'){ s.hold++; state.cargoMax+=10; } if(key==='shield'){ s.shield++; s.hullMax+=10; s.hull=s.hullMax; s.inv=Math.max(s.inv,160); } updateHUD(); renderDock(); }
 
   function setHome(){ if(!state || !state.docked) return; state.home = state.docked; toast('Home set to '+state.home.name); renderDock(); }
 
@@ -315,11 +315,13 @@ document.addEventListener('DOMContentLoaded', function(){
     ui.credits.textContent=Math.floor(state.credits);
     ui.fuel.textContent=Math.floor(state.fuel);
     ui.ammo.textContent=state.ammo;
-    ui.cargo.textContent=state.cargo;
-    ui.cargoMax.textContent=state.cargoMax;
-    ui.lives.textContent=state.ship.lives;
-    ui.missionCount.textContent=state.missions.length;
-    ui.rep.textContent=state.reputation;
+      ui.cargo.textContent=state.cargo;
+      ui.cargoMax.textContent=state.cargoMax;
+      ui.hull.textContent=Math.floor(state.ship.hull);
+      ui.hullMax.textContent=state.ship.hullMax;
+      ui.lives.textContent=state.ship.lives;
+      ui.missionCount.textContent=state.missions.length;
+      ui.rep.textContent=state.reputation;
     if(ui.lifeFill){
       var pct=state.ship.hull/state.ship.hullMax;
       ui.lifeFill.style.width=(pct*100)+'%';
@@ -342,9 +344,9 @@ document.addEventListener('DOMContentLoaded', function(){
       return '<div class="item"><div><b>Deliver '+m.qty+'</b> to <i>'+planetById(m.to).name+'</i> <span class="badge">$'+m.reward+'</span> '+lock+'</div>'+btn+'</div>';
     }).join('') || '<div class="item">No contracts available. Come back later.</div>';
     ui.missionList.querySelectorAll('[data-accept]').forEach(function(b){ b.onclick=function(){ accept(b.getAttribute('data-accept')); }; });
-    var s=state.ship; var ups=[{key:'engine',name:'Engine Mk II',desc:'+18% thrust / max speed',cost:200,level:s.engine},{key:'gun',name:'Rail Bolts',desc:'+18% bullet speed',cost:180,level:s.gun},{key:'hold',name:'Cargo Hold+',desc:'+10 cargo capacity',cost:150,level:s.hold},{key:'shield',name:'Shield Lattice',desc:'+10 hull & longer invuln',cost:220,level:s.shield}];
-    ui.upgrades.innerHTML=ups.map(function(u){ var maxed=u.level>=4; var action=maxed?'<button class="btn" disabled>Maxed</button>':'<button class="btn" data-up="'+u.key+'">Buy</button>'; return '<div class="item"><div><b>'+u.name+'</b> <span class="badge">Lv '+u.level+'/4</span> <span class="badge">$'+u.cost+'</span><div style="font-size:12px;color:var(--muted)">'+u.desc+'</div></div>'+action+'</div>'; }).join('');
-    ui.upgrades.querySelectorAll('[data-up]').forEach(function(b){ b.onclick=function(){ buyUpgrade(b.getAttribute('data-up')); }; });
+      var s=state.ship; var damaged=s.hull<s.hullMax; var ups=[{key:'engine',name:'Engine Mk II',desc:'+18% thrust / max speed',cost:200,level:s.engine},{key:'gun',name:'Rail Bolts',desc:'+18% bullet speed',cost:180,level:s.gun},{key:'hold',name:'Cargo Hold+',desc:'+10 cargo capacity',cost:150,level:s.hold},{key:'shield',name:'Shield Lattice',desc:'+10 hull & longer invuln',cost:220,level:s.shield}];
+      ui.upgrades.innerHTML=ups.map(function(u){ var maxed=u.level>=4; var action=maxed?'<button class="btn" disabled>Maxed</button>':(damaged?'<button class="btn" disabled>Repair Hull</button>':'<button class="btn" data-up="'+u.key+'">Buy</button>'); return '<div class="item"><div><b>'+u.name+'</b> <span class="badge">Lv '+u.level+'/4</span> <span class="badge">$'+u.cost+'</span><div style="font-size:12px;color:var(--muted)">'+u.desc+'</div></div>'+action+'</div>'; }).join('');
+      ui.upgrades.querySelectorAll('[data-up]').forEach(function(b){ b.onclick=function(){ buyUpgrade(b.getAttribute('data-up')); }; });
     document.querySelectorAll('[data-buy]').forEach(function(b){ b.onclick=function(){ marketBuy(b.getAttribute('data-buy')); }; });
   }
   function renderMissionLog(){ if(!state){ ui.missionLogList.innerHTML='<div class="item">No active missions.</div>'; return; } var items=state.missions.map(function(m){ var dest=planetById(m.to); var from=planetById(m.from); var tracked=state.tracked===m.id; var left=Math.max(0,Math.floor(m.timeLeft)); return '<div class="item"><div><b>'+m.qty+' units</b> from <i>'+from.name+'</i> → <i>'+dest.name+'</i> <span class="badge">$'+m.reward+'</span> <span class="badge">'+left+'s</span></div><div><button class="btn" data-track="'+m.id+'">'+(tracked?'Untrack':'Track')+'</button></div></div>'; }).join('') || '<div class="item">No active missions. Dock and accept contracts.</div>'; ui.missionLogList.innerHTML=items; ui.missionLogList.querySelectorAll('[data-track]').forEach(function(b){ b.onclick=function(){ toggleTrack(b.getAttribute('data-track')); }; }); }
@@ -381,11 +383,11 @@ document.addEventListener('DOMContentLoaded', function(){
     state.reputation=Math.max(0,state.reputation-2);
     toast('Ship lost! Cargo and missions forfeited. Rep -2');
     state.tracked=null;
-    Object.assign(s,{
-      vx:0, vy:0, a:-Math.PI/2,
-      inv:CFG.ship.invuln, blink:0, justSpawned:true,
-      hull:CFG.ship.hullMax
-    });
+      Object.assign(s,{
+        vx:0, vy:0, a:-Math.PI/2,
+        inv:CFG.ship.invuln, blink:0, justSpawned:true,
+        hull:s.hullMax
+      });
     var home=state.home || state.planets[0];
     state.ship.x=home.x; state.ship.y=home.y;
     dock(home);
