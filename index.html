@@ -342,6 +342,7 @@ document.addEventListener('DOMContentLoaded', function(){
     var s=state.ship;
     if(s.inv>0) return;
     s.hull -= d;
+    updateHUD();
     explode(s.x,s.y,10);
     if(s.hull<=0){
       killShip();
