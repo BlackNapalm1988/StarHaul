@@ -181,7 +181,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
   var DEBUG = (location.hash.indexOf('dev')>=0);
 
-  var W=960, H=600; var WORLD={w:5200,h:3900};
+  var W=960, H=600; var WORLD={w:10400,h:7800};
   var $=function(sel){ return document.querySelector(sel); };
   var wrap=$('.wrap'); if(!wrap){ wrap=document.createElement('div'); wrap.className='wrap'; document.body.appendChild(wrap); }
   var canvas=$('#game'); if(!canvas){ canvas=document.createElement('canvas'); canvas.id='game'; canvas.width=960; canvas.height=600; wrap.insertBefore(canvas, wrap.firstChild||null); }
@@ -206,9 +206,9 @@ document.addEventListener('DOMContentLoaded', function(){
     bullets:{max:7,speed:9.5,life:110,cool:9},
     economy:{startCredits:200,fuelStart:140,fuelUse:0.055,ammoStart:24,cargoMax:20},
     asteroid:{count:90,speed:[.22,.85],sizes:[24,16,10],jag:.35,verts:[8,14]},
-    pirates:{spawnEvery:900,bulletSpeed:6.5,fireEvery:120,aggro:380,speed:2.1,hp:7,boardRange:22,boardTime:90,steal:{credits:[60,160], cargo:[3,10]}, repPenalty:1},
+    pirates:{spawnEvery:300,bulletSpeed:6.5,fireEvery:120,aggro:380,speed:2.1,hp:7,boardRange:22,boardTime:90,steal:{credits:[60,160], cargo:[3,10]}, repPenalty:1},
     blackholes:3, planets:12, stars:7,
-    safety:{fromBH:260, fromPlanet:160, fromStar:220},
+    safety:{fromBH:520, fromPlanet:320, fromStar:440},
     contracts:{perPlanet:3, refreshEvery:1800, minTime:3200, maxTime:5200},
     gates:4,
     towing:{base:25, perUnit:0.02},
@@ -296,7 +296,7 @@ document.addEventListener('DOMContentLoaded', function(){
   function reset(){
     state={ ship:newShip(), credits:CFG.economy.startCredits, fuel:CFG.economy.fuelStart, ammo:CFG.economy.ammoStart,
       cargo:0, cargoMax:CFG.economy.cargoMax, bullets:[], particles:[], asteroids:[], planets:[], blackholes:[],
-      pirates:[], missions:[], score:0, gameOver:false, spawnTimer:900, reputation:0, tracked:null,
+      pirates:[], missions:[], score:0, gameOver:false, spawnTimer:CFG.pirates.spawnEvery, reputation:0, tracked:null,
       gates:[], fow:new Set(), docked:null, stars:[], towed:false, nebulae:[], discovered:new Set(), home:null,
       comets:[], cometTimer:irand(CFG.comets.spawnEvery[0],CFG.comets.spawnEvery[1]), galaxies:[], flashes:[] };
     for(var i=0;i<CFG.planets;i++) state.planets.push(makePlanet(i));
@@ -306,6 +306,7 @@ document.addEventListener('DOMContentLoaded', function(){
     for(var gg=0; gg<CFG.background.galaxies; gg++){ state.galaxies.push(makeGalaxy()); }
     for(var k=0;k<CFG.asteroid.count;k++){ var ax,ay; do{ ax=rand(0,WORLD.w); ay=rand(0,WORLD.h);} while(!farFromAll(ax,ay,state.blackholes,state.planets) ); state.asteroids.push(makeAsteroid(ax,ay,CFG.asteroid.sizes[0])); }
     for(var g=0;g<CFG.gates;g++) state.gates.push(makeGate(g));
+    for(var p=0;p<3;p++) state.pirates.push(makePirate());
     refreshOffers(true);
     // choose random home planet and start docked there
     state.home = state.planets[irand(0,state.planets.length)];
@@ -331,7 +332,9 @@ document.addEventListener('DOMContentLoaded', function(){
     if(what==='ammo'){ var cost2=5*10; if(state.credits>=cost2){ state.credits-=cost2; state.ammo+=10; } }
       if(what==='repair'){ var cost3=20; if(state.credits>=cost3 && state.ship.hull<state.ship.hullMax){ state.credits-=cost3; state.ship.hull=clamp(state.ship.hull+10,0,state.ship.hullMax); } }
     updateHUD(); renderDock(); tryDeliver(); }
-    function buyUpgrade(key){ if(!state) return; var s=state.ship; var costs={engine:200,gun:180,hold:150,shield:220}; if(s[key]===undefined) return; if(s[key]>=4){ toast('Upgrade '+key+' is maxed'); return; } if(s.hull<s.hullMax){ toast('Repair hull before upgrading'); return; } if(state.credits<costs[key]) return; state.credits-=costs[key]; if(key==='engine'){ s.engine++; CFG.ship.accel*=1.18; CFG.ship.maxSpeed*=1.18; } if(key==='gun'){ s.gun++; CFG.bullets.speed*=1.18; } if(key==='hold'){ s.hold++; state.cargoMax+=10; } if(key==='shield'){ s.shield++; s.hullMax+=10; s.hull=s.hullMax; s.inv=Math.max(s.inv,160); } updateHUD(); renderDock(); }
+
+  function upgradeCost(key, level){ var base={engine:200,gun:180,hold:150,shield:220}; return Math.floor(base[key]*Math.pow(1.5, level-1)); }
+  function buyUpgrade(key){ if(!state) return; var s=state.ship; if(s[key]===undefined) return; if(s[key]>=4){ toast('Upgrade '+key+' is maxed'); return; } if(s.hull<s.hullMax){ toast('Repair hull before upgrading'); return; } var cost=upgradeCost(key,s[key]); if(state.credits<cost) return; state.credits-=cost; if(key==='engine'){ s.engine++; CFG.ship.accel*=1.18; CFG.ship.maxSpeed*=1.18; } if(key==='gun'){ s.gun++; CFG.bullets.speed*=1.18; } if(key==='hold'){ s.hold++; state.cargoMax+=10; } if(key==='shield'){ s.shield++; s.hullMax+=10; s.hull=s.hullMax; s.inv=Math.max(s.inv,160); } updateHUD(); renderDock(); }
 
   function setHome(){ if(!state || !state.docked) return; state.home = state.docked; toast('Home set to '+state.home.name); renderDock(); }
 
@@ -387,8 +390,8 @@ document.addEventListener('DOMContentLoaded', function(){
       return '<div class="item"><div><b>Deliver '+m.qty+'</b> to <i>'+planetById(m.to).name+'</i> <span class="badge">$'+m.reward+'</span> '+lock+'</div>'+btn+'</div>';
     }).join('') || '<div class="item">No contracts available. Come back later.</div>';
     ui.missionList.querySelectorAll('[data-accept]').forEach(function(b){ b.onclick=function(){ accept(b.getAttribute('data-accept')); }; });
-      var s=state.ship; var damaged=s.hull<s.hullMax; var ups=[{key:'engine',name:'Engine Mk II',desc:'+18% thrust / max speed',cost:200,level:s.engine},{key:'gun',name:'Rail Bolts',desc:'+18% bullet speed',cost:180,level:s.gun},{key:'hold',name:'Cargo Hold+',desc:'+10 cargo capacity',cost:150,level:s.hold},{key:'shield',name:'Shield Lattice',desc:'+10 hull & longer invuln',cost:220,level:s.shield}];
-      ui.upgrades.innerHTML=ups.map(function(u){ var maxed=u.level>=4; var action=maxed?'<button class="btn" disabled>Maxed</button>':(damaged?'<button class="btn" disabled>Repair Hull</button>':'<button class="btn" data-up="'+u.key+'">Buy</button>'); return '<div class="item"><div><b>'+u.name+'</b> <span class="badge">Lv '+u.level+'/4</span> <span class="badge">$'+u.cost+'</span><div style="font-size:12px;color:var(--muted)">'+u.desc+'</div></div>'+action+'</div>'; }).join('');
+      var s=state.ship; var damaged=s.hull<s.hullMax; var ups=[{key:'engine',name:'Engine Mk II',desc:'+18% thrust / max speed',level:s.engine},{key:'gun',name:'Rail Bolts',desc:'+18% bullet speed',level:s.gun},{key:'hold',name:'Cargo Hold+',desc:'+10 cargo capacity',level:s.hold},{key:'shield',name:'Shield Lattice',desc:'+10 hull & longer invuln',level:s.shield}];
+      ui.upgrades.innerHTML=ups.map(function(u){ u.cost=upgradeCost(u.key,u.level); var maxed=u.level>=4; var action=maxed?'<button class="btn" disabled>Maxed</button>':(damaged?'<button class="btn" disabled>Repair Hull</button>':'<button class="btn" data-up="'+u.key+'">Buy</button>'); return '<div class="item"><div><b>'+u.name+'</b> <span class="badge">Lv '+u.level+'/4</span> <span class="badge">$'+u.cost+'</span><div style="font-size:12px;color:var(--muted)">'+u.desc+'</div></div>'+action+'</div>'; }).join('');
       ui.upgrades.querySelectorAll('[data-up]').forEach(function(b){ b.onclick=function(){ buyUpgrade(b.getAttribute('data-up')); }; });
     document.querySelectorAll('[data-buy]').forEach(function(b){ b.onclick=function(){ marketBuy(b.getAttribute('data-buy')); }; });
   }
@@ -568,7 +571,7 @@ document.addEventListener('DOMContentLoaded', function(){
   }
 
   function supernova(index){ var st=state.stars[index]; for(var i=0;i<CFG.supernova.shockParticles;i++){ var a=rand(0,Math.PI*2), sp=rand(1.0,3.6); state.particles.push({x:st.x,y:st.y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:rand(22,44),r:rand(1.4,2.6),h:rand(28,58)}); } var count=irand(CFG.supernova.yield[0], CFG.supernova.yield[1]); var baseAngle=rand(0,Math.PI*2); for(var k=0;k<count;k++){ var ang=baseAngle + (k/count)*Math.PI*2 + rand(-0.1,0.1); var off=rand(4, st.r*0.6); var ax=st.x + Math.cos(ang)*off; var ay=st.y + Math.sin(ang)*off; var size=pick(CFG.asteroid.sizes); var a=makeAsteroid(ax, ay, size); var kick=rand(CFG.supernova.kick[0], CFG.supernova.kick[1]); a.vx += Math.cos(ang)*kick; a.vy += Math.sin(ang)*kick; state.asteroids.push(a); } state.nebulae.push(makeNebula(st.x, st.y)); toast('💥 Supernova! New asteroid field detected.'); state.stars.splice(index,1); }
-  function solarFlare(st){ for(var i=0;i<20;i++){ var a=rand(0,Math.PI*2), sp=rand(1,3); state.particles.push({x:st.x,y:st.y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:rand(18,36),r:rand(1,2),h:rand(28,58)}); } var d=Math.hypot(state.ship.x-st.x,state.ship.y-st.y); if(d<CFG.solarFlare.radius){ damage(CFG.solarFlare.damage); state.ship.flare=CFG.solarFlare.stun; } toast('☀️ Solar flare!'); }
+  function solarFlare(st){ for(var i=0;i<40;i++){ var a=rand(0,Math.PI*2), sp=rand(2,5); state.particles.push({x:st.x,y:st.y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:rand(40,80),r:rand(1,2),h:rand(28,58)}); } var d=Math.hypot(state.ship.x-st.x,state.ship.y-st.y); if(d<CFG.solarFlare.radius){ damage(CFG.solarFlare.damage); state.ship.flare=CFG.solarFlare.stun; } toast('☀️ Solar flare!'); }
 
   function draw(){
     ctx.clearRect(0,0,W,H);
@@ -600,6 +603,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
     // stars (core + unstable telegraph)
     state.stars.forEach(function(st){ ctx.save(); ctx.translate(st.x, st.y); var g=ctx.createRadialGradient(0,0,2,0,0,st.r); g.addColorStop(0,'hsl('+st.hue+',80%,90%)'); g.addColorStop(0.4,'hsl('+st.hue+',80%,60%)'); g.addColorStop(1,'hsla('+st.hue+',80%,40%,0.2)'); ctx.fillStyle=g; ctx.beginPath(); ctx.arc(0,0,st.r,0,Math.PI*2); ctx.fill(); ctx.globalAlpha=0.25; ctx.drawImage(st.noise,-st.noise.width/2,-st.noise.height/2); ctx.globalAlpha=1; if(st.phase==='unstable'){ var pulse=(Math.sin(st.pulse)+1)*0.5; ctx.globalAlpha = 0.35 + 0.35*pulse; ctx.strokeStyle='rgba(255,220,120,0.8)'; ctx.lineWidth=2 + 3*pulse; ctx.beginPath(); ctx.arc(0,0, st.r + 10 + 6*pulse, 0, Math.PI*2); ctx.stroke(); ctx.globalAlpha=1; } ctx.restore(); });
+    state.gates.forEach(function(g){ ctx.save(); ctx.strokeStyle='#9bf'; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(g.x,g.y,g.r,0,Math.PI*2); ctx.stroke(); ctx.restore(); });
 
     // particles
     state.particles.forEach(function(p){ ctx.globalAlpha=clamp(p.life/36,0,1); ctx.fillStyle='hsl('+p.h+',70%,70%)'; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();}); ctx.globalAlpha=1;
