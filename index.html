@@ -210,11 +210,19 @@ document.addEventListener('DOMContentLoaded', function(){
     pirates:{spawnEvery:300,bulletSpeed:6.5,fireEvery:120,aggro:380,speed:2.1,hp:7,boardRange:22,boardTime:90,steal:{credits:[60,160], cargo:[3,10]}, repPenalty:1},
     blackholes:3, planets:12, stars:7,
     safety:{fromBH:520, fromPlanet:320, fromStar:440},
-    contracts:{perPlanet:3, refreshEvery:1800, minTime:3200, maxTime:5200},
+    contracts:{perPlanet:3, refreshEvery:1800, minTime:3200, maxTime:5200, illegalChance:0.2},
     gates:4,
     towing:{base:25, perUnit:0.02},
     supernova:{minLife:4800,maxLife:9600,warnWindow:900,yield:[16,32],kick:[1.4,2.8],shockParticles:80},
     hazards:{nebulae:6},
+    mines:{radius:34,damage:40,count:12},
+    radiation:{count:3,damage:1},
+    rifts:{count:2,pull:0.15,drift:0.3},
+    pirateBase:{count:1,r:40,hp:60,spawnEvery:400,bounty:200,fireEvery:180},
+    hunters:{thresholds:[5,10],speed:3,bulletSpeed:8.5,fireEvery:100},
+    patrols:{count:2,scanRadius:260,cone:0.8,fine:100},
+    contraband:{repPenalty:2},
+    meteors:{spawnEvery:[1800,3200],duration:[180,300],rate:15},
     comets:{spawnEvery:[600,1200],speed:[4,7],damage:30},
     solarFlare:{min:800,max:1600,damage:15,stun:90,radius:260},
     nebulaStar:{blue:0.00005,purple:0.00008,green:0.00003},
@@ -261,6 +269,13 @@ document.addEventListener('DOMContentLoaded', function(){
     var tex=bakeAsteroidTexture(r,offs);
     return {x:x,y:y,r:r,vx:Math.cos(va)*vel,vy:Math.sin(va)*vel,a:rand(0,Math.PI*2),spin:rand(-.008,.008),offs:offs,layer:layer,tex:tex};
   }
+  function makeMine(x,y){ return {x:x,y:y,r:CFG.mines.radius,blink:0}; }
+  function makeRadiation(){ return {x:rand(200,WORLD.w-200),y:rand(200,WORLD.h-200),r:rand(80,140)}; }
+  function makeRift(){ return {x:rand(200,WORLD.w-200),y:rand(200,WORLD.h-200),r:22,vx:rand(-CFG.rifts.drift,CFG.rifts.drift),vy:rand(-CFG.rifts.drift,CFG.rifts.drift)}; }
+  function makePirateBase(){ return {x:rand(200,WORLD.w-200),y:rand(200,WORLD.h-200),r:CFG.pirateBase.r,hp:CFG.pirateBase.hp,spawn:CFG.pirateBase.spawnEvery,cool:CFG.pirateBase.fireEvery}; }
+  function makeHunter(){ var side=irand(0,4); var m=80; var pos=[{x:-m,y:rand(0,WORLD.h)},{x:WORLD.w+m,y:rand(0,WORLD.h)},{x:rand(0,WORLD.w),y:-m},{x:rand(0,WORLD.w),y:WORLD.h+m}][side]; return {x:pos.x,y:pos.y,r:16,vx:0,vy:0,cool:CFG.hunters.fireEvery}; }
+  function makePatrol(){ var side=irand(0,4); var m=80; var pos=[{x:-m,y:rand(0,WORLD.h)},{x:WORLD.w+m,y:rand(0,WORLD.h)},{x:rand(0,WORLD.w),y:-m},{x:rand(0,WORLD.w),y:WORLD.h+m}][side]; var ang=rand(0,Math.PI*2); var speed=1.6; return {x:pos.x,y:pos.y,vx:Math.cos(ang)*speed,vy:Math.sin(ang)*speed,a:ang,scan:120,r:14}; }
+  function startMeteorEvent(){ return {x:rand(200,WORLD.w-200),y:rand(200,WORLD.h-200),angle:rand(0,Math.PI*2),t:irand(CFG.meteors.duration[0],CFG.meteors.duration[1]),spawn:0}; }
   function splitAst(a){ var res=[]; if(a.r>CFG.asteroid.sizes[2]+1){ var next=a.r===CFG.asteroid.sizes[0]?CFG.asteroid.sizes[1]:CFG.asteroid.sizes[2]; for(var i=0;i<2;i++){ var p=makeAsteroid(a.x+rand(-8,8),a.y+rand(-8,8),next); p.vx+=a.vx*.25; p.vy+=a.vy*.25; res.push(p); } } return res; }
   function makePlanet(i){ var types=["rocky","ocean","ice","lava","gas","industrial"]; var type=types[i % types.length]; var r=irand(28,80); var x,y,tries=0; do{ x=rand(200,WORLD.w-200); y=rand(200,WORLD.h-200); tries++; } while((Math.hypot(x-WORLD.w/2,y-WORLD.h/2)<360 || !farFromAll(x,y,state.blackholes,state.planets)) && tries<200); var names=["Eden","Kovax","Aria","Tarsis","Veld","Khepri","Nysa","Osiris","Ixia","Carina","Prax","Rhea"]; var p={ id:i,x:x,y:y,r:r,type:type,rot:rand(0,Math.PI*2),rotSpeed:rand(-0.0012,0.0012), hasRings:(Math.random()<0.25)&&r>40, name:names[i%names.length]+"-"+(100+i), stock:{fuel:irand(200,600),ammo:irand(50,150)}, prices:{fuel:2+rand(-.3,.4),ammo:5+rand(-1,1),repair:20}, offers:[], layer:PLANET_LAYER }; var tex=bakePlanetTexture(p); p.tex=tex.planet; p.ringsTex=tex.rings; return p; }
   function makeBlackHole(){ return {x:rand(180,WORLD.w-180),y:rand(180,WORLD.h-180),r:32}; }
@@ -300,7 +315,9 @@ document.addEventListener('DOMContentLoaded', function(){
       cargo:0, cargoMax:CFG.economy.cargoMax, bullets:[], particles:[], asteroids:[], planets:[], blackholes:[],
       pirates:[], missions:[], score:0, gameOver:false, spawnTimer:CFG.pirates.spawnEvery, reputation:0, tracked:null,
       gates:[], fow:new Set(), docked:null, stars:[], towed:false, nebulae:[], discovered:new Set(), home:null,
-      comets:[], cometTimer:irand(CFG.comets.spawnEvery[0],CFG.comets.spawnEvery[1]), galaxies:[], flashes:[], haulers:[] };
+      comets:[], cometTimer:irand(CFG.comets.spawnEvery[0],CFG.comets.spawnEvery[1]), galaxies:[], flashes:[], haulers:[],
+      mines:[], radiations:[], inRadiation:false,
+      rifts:[], bases:[], hunters:[], patrols:[], meteorEvents:[], nextMeteor:irand(CFG.meteors.spawnEvery[0],CFG.meteors.spawnEvery[1]), hunterLevel:0 };
     for(var i=0;i<CFG.planets;i++) state.planets.push(makePlanet(i));
     for(var j=0;j<CFG.blackholes;j++){ var bh; var tries=0; do{ bh=makeBlackHole(); tries++; } while(!farFromAll(bh.x,bh.y,state.blackholes,state.planets) && tries<200); state.blackholes.push(bh); }
     for(var s=0;s<CFG.stars;s++){ state.stars.push(makeStar()); }
@@ -309,6 +326,11 @@ document.addEventListener('DOMContentLoaded', function(){
     for(var k=0;k<CFG.asteroid.count;k++){ var ax,ay; do{ ax=rand(0,WORLD.w); ay=rand(0,WORLD.h);} while(!farFromAll(ax,ay,state.blackholes,state.planets) ); state.asteroids.push(makeAsteroid(ax,ay,CFG.asteroid.sizes[0])); }
     for(var g=0;g<CFG.gates;g++) state.gates.push(makeGate(g));
     for(var p=0;p<3;p++) state.pirates.push(makePirate());
+    for(var m=0;m<CFG.mines.count;m++){ state.mines.push(makeMine(rand(0,WORLD.w),rand(0,WORLD.h))); }
+    for(var r=0;r<CFG.radiation.count;r++){ state.radiations.push(makeRadiation()); }
+    for(var rf=0; rf<CFG.rifts.count; rf++){ state.rifts.push(makeRift()); }
+    for(var pb=0; pb<CFG.pirateBase.count; pb++){ state.bases.push(makePirateBase()); }
+    for(var pt=0; pt<CFG.patrols.count; pt++){ state.patrols.push(makePatrol()); }
     refreshOffers(true);
     // choose random home planet and start docked there
     state.home = state.planets[irand(0,state.planets.length)];
@@ -322,7 +344,7 @@ document.addEventListener('DOMContentLoaded', function(){
   function cryptoRandom(){ return Math.random().toString(36).slice(2,9); }
   function reqRepForReward(reward){ return clamp(Math.floor(reward/450),0,9); }
   function planetById(id){ for(var i=0;i<state.planets.length;i++){ if(state.planets[i].id===id) return state.planets[i]; } }
-  function ensureOffersForPlanet(pid){ var p=planetById(pid); if(!p) return; while(p.offers.length < CFG.contracts.perPlanet){ var to; do{ to = state.planets[irand(0,state.planets.length)]; } while(!to || to.id===p.id); var qty=irand(3,12); var baseDist=Math.hypot(to.x-p.x,to.y-p.y); var reward=Math.floor(qty*(20+baseDist/35)); var time=irand(CFG.contracts.minTime, CFG.contracts.maxTime)+Math.floor(baseDist/2); var reqRep=reqRepForReward(reward); reward=Math.floor(reward*(1+state.reputation*0.05)); p.offers.push({id:cryptoRandom(),from:p.id,to:to.id,qty:qty,reward:reward,timeLeft:time,active:false,reqRep:reqRep}); } }
+  function ensureOffersForPlanet(pid){ var p=planetById(pid); if(!p) return; while(p.offers.length < CFG.contracts.perPlanet){ var to; do{ to = state.planets[irand(0,state.planets.length)]; } while(!to || to.id===p.id); var qty=irand(3,12); var baseDist=Math.hypot(to.x-p.x,to.y-p.y); var reward=Math.floor(qty*(20+baseDist/35)); var time=irand(CFG.contracts.minTime, CFG.contracts.maxTime)+Math.floor(baseDist/2); var reqRep=reqRepForReward(reward); var illegal=Math.random()<CFG.contracts.illegalChance; if(illegal) reward=Math.floor(reward*1.6); reward=Math.floor(reward*(1+state.reputation*0.05)); p.offers.push({id:cryptoRandom(),from:p.id,to:to.id,qty:qty,reward:reward,timeLeft:time,active:false,reqRep:reqRep,illegal:illegal}); } }
   function refreshOffers(initial){ if(!state) return; state.planets.forEach(function(pl){ if(!initial) pl.offers=pl.offers.filter(function(o){return o.timeLeft>0;}); ensureOffersForPlanet(pl.id); }); offerTimer = CFG.contracts.refreshEvery; renderDock(); }
 
   function nearbyPlanet(){ for(var i=0;i<state.planets.length;i++){ var pl=state.planets[i]; if(Math.hypot(pl.x-state.ship.x,pl.y-state.ship.y)<pl.r+32) return pl; } }
@@ -388,8 +410,9 @@ document.addEventListener('DOMContentLoaded', function(){
     ui.missionList.innerHTML = hereOffers.map(function(m){
       var locked=state.reputation<m.reqRep;
       var lock=locked?'<span class="badge" style="background:rgba(255,107,107,.15);color:#ffb3b3">Rep '+m.reqRep+' req.</span>':'';
+      var illegal=m.illegal?'<span class="badge" style="background:rgba(255,0,0,.15);color:#f99">Illegal</span>':'';
       var btn=locked?'<button class="btn" disabled>Locked</button>':'<button class="btn" data-accept="'+m.id+'">Accept</button>';
-      return '<div class="item"><div><b>Deliver '+m.qty+'</b> to <i>'+planetById(m.to).name+'</i> <span class="badge">$'+m.reward+'</span> '+lock+'</div>'+btn+'</div>';
+      return '<div class="item"><div><b>Deliver '+m.qty+'</b> to <i>'+planetById(m.to).name+'</i> <span class="badge">$'+m.reward+'</span> '+illegal+' '+lock+'</div>'+btn+'</div>';
     }).join('') || '<div class="item">No contracts available. Come back later.</div>';
     ui.missionList.querySelectorAll('[data-accept]').forEach(function(b){ b.onclick=function(){ accept(b.getAttribute('data-accept')); }; });
       var s=state.ship; var damaged=s.hull<s.hullMax; var ups=[{key:'engine',name:'Engine Mk II',desc:'+18% thrust / max speed',level:s.engine},{key:'gun',name:'Rail Bolts',desc:'+18% bullet speed',level:s.gun},{key:'hold',name:'Cargo Hold+',desc:'+10 cargo capacity',level:s.hold},{key:'shield',name:'Shield Lattice',desc:'+10 hull & longer invuln',level:s.shield}];
@@ -397,7 +420,7 @@ document.addEventListener('DOMContentLoaded', function(){
       ui.upgrades.querySelectorAll('[data-up]').forEach(function(b){ b.onclick=function(){ buyUpgrade(b.getAttribute('data-up')); }; });
     document.querySelectorAll('[data-buy]').forEach(function(b){ b.onclick=function(){ marketBuy(b.getAttribute('data-buy')); }; });
   }
-  function renderMissionLog(){ if(!state){ ui.missionLogList.innerHTML='<div class="item">No active missions.</div>'; return; } var items=state.missions.map(function(m){ var dest=planetById(m.to); var from=planetById(m.from); var tracked=state.tracked===m.id; var left=Math.max(0,Math.floor(m.timeLeft)); return '<div class="item"><div><b>'+m.qty+' units</b> from <i>'+from.name+'</i> → <i>'+dest.name+'</i> <span class="badge">$'+m.reward+'</span> <span class="badge">'+left+'s</span></div><div><button class="btn" data-track="'+m.id+'">'+(tracked?'Untrack':'Track')+'</button></div></div>'; }).join('') || '<div class="item">No active missions. Dock and accept contracts.</div>'; ui.missionLogList.innerHTML=items; ui.missionLogList.querySelectorAll('[data-track]').forEach(function(b){ b.onclick=function(){ toggleTrack(b.getAttribute('data-track')); }; }); }
+  function renderMissionLog(){ if(!state){ ui.missionLogList.innerHTML='<div class="item">No active missions.</div>'; return; } var items=state.missions.map(function(m){ var dest=planetById(m.to); var from=planetById(m.from); var tracked=state.tracked===m.id; var left=Math.max(0,Math.floor(m.timeLeft)); var illegal=m.illegal?'<span class="badge" style="background:rgba(255,0,0,.15);color:#f99">Illegal</span>':''; return '<div class="item"><div><b>'+m.qty+' units</b> from <i>'+from.name+'</i> → <i>'+dest.name+'</i> <span class="badge">$'+m.reward+'</span> '+illegal+' <span class="badge">'+left+'s</span></div><div><button class="btn" data-track="'+m.id+'">'+(tracked?'Untrack':'Track')+'</button></div></div>'; }).join('') || '<div class="item">No active missions. Dock and accept contracts.</div>'; ui.missionLogList.innerHTML=items; ui.missionLogList.querySelectorAll('[data-track]').forEach(function(b){ b.onclick=function(){ toggleTrack(b.getAttribute('data-track')); }; }); }
   function toggleTrack(id){ if(!state) return; state.tracked=(state.tracked===id?null:id); renderMissionLog(); }
 
   function fire(){ if(!state) return; var s=state.ship; if(s.flare>0) return; if(s.cool>0||state.bullets.length>=CFG.bullets.max||state.ammo<=0) return; s.cool=CFG.bullets.cool; state.ammo--; var tip={x:s.x+Math.cos(s.a)*s.r,y:s.y+Math.sin(s.a)*s.r}; state.bullets.push({x:tip.x,y:tip.y,vx:Math.cos(s.a)*CFG.bullets.speed+s.vx*.25,vy:Math.sin(s.a)*CFG.bullets.speed+s.vy*.25,life:CFG.bullets.life,r:2.4}); updateHUD(); }
@@ -444,6 +467,8 @@ document.addEventListener('DOMContentLoaded', function(){
   function explode(x,y,count){ if(!state) return; count=count||16; for(var i=0;i<count;i++){ var ang=rand(0,Math.PI*2); state.particles.push({x:x,y:y,vx:Math.cos(ang)*rand(.5,3.2),vy:Math.sin(ang)*rand(.5,3.2),life:rand(18,36),r:rand(1,2.5),h:rand(190,220)}); } }
 
   function pirateSteal(p){ if(!state) return; var creditsSteal=Math.min(state.credits, Math.floor(rand(CFG.pirates.steal.credits[0], CFG.pirates.steal.credits[1])) ); var cargoSteal=Math.min(state.cargo, irand(CFG.pirates.steal.cargo[0], CFG.pirates.steal.cargo[1])); state.credits-=creditsSteal; state.cargo-=cargoSteal; state.reputation=Math.max(0,state.reputation-CFG.pirates.repPenalty); toast('Pirates boarded! -$'+creditsSteal+', -'+cargoSteal+' cargo, Rep -'+CFG.pirates.repPenalty); updateHUD(); var dx=state.ship.x-p.x, dy=state.ship.y-p.y; var d=Math.hypot(dx,dy)||1; p.vx-=(dx/d)*2; p.vy-=(dy/d)*2; }
+  function hasIllegalCargo(){ return state.missions.some(function(m){ return m.active && m.illegal; }); }
+  function caughtContraband(){ var seized=0; state.missions=state.missions.filter(function(m){ if(m.active && m.illegal){ seized+=m.qty; return false; } return true; }); state.cargo=Math.max(0,state.cargo-seized); state.credits=Math.max(0,state.credits-CFG.patrols.fine); state.reputation=Math.max(0,state.reputation-CFG.contraband.repPenalty); toast('Contraband seized! -$'+CFG.patrols.fine+' • Rep -'+CFG.contraband.repPenalty); updateHUD(); }
 
   function checkFuelTow(){ if(!state) return; if(state.fuel>0||state.docked||state.towed) return; var np=nearestPlanet(state.ship.x,state.ship.y); var fee=Math.ceil(CFG.towing.base+CFG.towing.perUnit*np.dist); state.ship.vx=0; state.ship.vy=0; state.credits=Math.max(0,state.credits-fee); state.towed=true; toast('Out of fuel! Towed to '+np.planet.name+' (-$'+fee+')'); var angle=rand(0,Math.PI*2); state.ship.x=np.planet.x+Math.cos(angle)*(np.planet.r+36); state.ship.y=np.planet.y+Math.sin(angle)*(np.planet.r+36); dock(np.planet); updateHUD(); }
 
@@ -477,6 +502,13 @@ document.addEventListener('DOMContentLoaded', function(){
     state.bullets.forEach(function(b){ b.x+=b.vx*dt; b.y+=b.vy*dt; b.life-=1*dt; wrapEntity(b); });
     state.bullets=state.bullets.filter(function(b){ return b.life>0; });
 
+    // minefield proximity
+    for(var mi=state.mines.length-1; mi>=0; mi--){ var m=state.mines[mi]; if(Math.hypot(s.x-m.x,s.y-m.y)<m.r){ explode(m.x,m.y,24); damage(CFG.mines.damage); state.mines.splice(mi,1); } }
+
+    // radiation zones
+    state.inRadiation=false;
+    for(var ri=0; ri<state.radiations.length; ri++){ var rz=state.radiations[ri]; if(Math.hypot(s.x-rz.x,s.y-rz.y)<rz.r){ state.inRadiation=true; if(s.shield<2 && s.inv<=0){ s.hull-=CFG.radiation.damage*dt; if(s.hull<=0){ s.hull=0; killShip(); } updateHUD(); } } }
+
     state.cometTimer-=1*dt;
     if(state.cometTimer<=0){ state.comets.push(makeComet()); state.cometTimer=irand(CFG.comets.spawnEvery[0],CFG.comets.spawnEvery[1]); }
     state.comets.forEach(function(c){
@@ -492,6 +524,11 @@ document.addEventListener('DOMContentLoaded', function(){
     });
     state.comets=state.comets.filter(function(c){ return c.x>-100 && c.x<WORLD.w+100 && c.y>-100 && c.y<WORLD.h+100 && c.life>0; });
 
+    // meteor showers
+    state.nextMeteor-=1*dt;
+    if(state.nextMeteor<=0){ state.meteorEvents.push(startMeteorEvent()); state.nextMeteor=irand(CFG.meteors.spawnEvery[0],CFG.meteors.spawnEvery[1]); toast('☄️ Meteor shower!'); }
+    for(var me=state.meteorEvents.length-1; me>=0; me--){ var ev=state.meteorEvents[me]; ev.t-=1*dt; ev.spawn-=1*dt; if(ev.spawn<=0){ ev.spawn=60/CFG.meteors.rate; var ex=ev.x+Math.cos(ev.angle)*rand(-220,220); var ey=ev.y+Math.sin(ev.angle)*rand(-220,220); state.asteroids.push(makeAsteroid(ex,ey,CFG.asteroid.sizes[2])); } if(ev.t<=0){ state.meteorEvents.splice(me,1); } }
+
     // asteroids move
     for(var i=state.asteroids.length-1;i>=0;i--){ var a=state.asteroids[i]; a.x+=a.vx*dt; a.y+=a.vy*dt; a.a+=a.spin*dt; wrapEntity(a);
       // collide with planets (split)
@@ -504,6 +541,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
     // pirates spawn & steer with avoidance
     state.spawnTimer-=1*dt; if(state.spawnTimer<=0){ state.pirates.push(makePirate()); state.spawnTimer=CFG.pirates.spawnEvery; }
+    if(state.hunterLevel < CFG.hunters.thresholds.length && state.reputation >= CFG.hunters.thresholds[state.hunterLevel]){ state.hunters.push(makeHunter()); state.hunterLevel++; toast('Bounty hunter inbound!'); }
     state.pirates.forEach(function(p){
       var target=state.ship, dx=target.x-p.x, dy=target.y-p.y, d=Math.hypot(dx,dy);
       state.haulers.forEach(function(h){ var dh=Math.hypot(h.x-p.x,h.y-p.y); if(dh<d){ target=h; dx=h.x-p.x; dy=h.y-p.y; d=dh; }});
@@ -521,6 +559,12 @@ document.addEventListener('DOMContentLoaded', function(){
       p.x+=p.vx*dt; p.y+=p.vy*dt; wrapEntity(p);
     });
 
+    state.bases.forEach(function(b){ b.spawn-=1*dt; b.cool-=1*dt; if(b.spawn<=0){ var np=makePirate(); np.x=b.x+rand(-60,60); np.y=b.y+rand(-60,60); state.pirates.push(np); b.spawn=CFG.pirateBase.spawnEvery; } if(b.cool<=0){ var dx=state.ship.x-b.x, dy=state.ship.y-b.y; var d=Math.hypot(dx,dy); if(d<420){ var a=Math.atan2(dy,dx); state.bullets.push({x:b.x,y:b.y,vx:Math.cos(a)*3,vy:Math.sin(a)*3,life:220,r:3,enemy:true}); b.cool=CFG.pirateBase.fireEvery; } } });
+
+    state.hunters.forEach(function(h){ var dx=state.ship.x-h.x, dy=state.ship.y-h.y; var d=Math.hypot(dx,dy)||1; h.vx+=(dx/d)*0.05*dt; h.vy+=(dy/d)*0.05*dt; var sp=Math.hypot(h.vx,h.vy); if(sp>CFG.hunters.speed){ h.vx=(h.vx/sp)*CFG.hunters.speed; h.vy=(h.vy/sp)*CFG.hunters.speed; } h.x+=h.vx*dt; h.y+=h.vy*dt; wrapEntity(h); h.cool-=1*dt; if(h.cool<=0){ var lead=d/CFG.hunters.bulletSpeed; var tx=state.ship.x+state.ship.vx*lead; var ty=state.ship.y+state.ship.vy*lead; var ang=Math.atan2(ty-h.y,tx-h.x); state.bullets.push({x:h.x,y:h.y,vx:Math.cos(ang)*CFG.hunters.bulletSpeed,vy:Math.sin(ang)*CFG.hunters.bulletSpeed,life:220,r:3,enemy:true}); h.cool=CFG.hunters.fireEvery; } });
+
+    state.patrols.forEach(function(p){ p.x+=p.vx*dt; p.y+=p.vy*dt; wrapEntity(p); p.a=Math.atan2(p.vy,p.vx); p.scan-=1*dt; if(p.scan<=0){ p.scan=120; var dx=state.ship.x-p.x, dy=state.ship.y-p.y; var d=Math.hypot(dx,dy); var ang=Math.atan2(dy,dx); var diff=Math.abs(Math.atan2(Math.sin(ang-p.a),Math.cos(ang-p.a))); if(d<CFG.patrols.scanRadius && diff<CFG.patrols.cone){ if(hasIllegalCargo()) caughtContraband(); } } });
+
     for(var hi=state.haulers.length-1; hi>=0; hi--){ var H=state.haulers[hi]; var dest=planetById(H.mission.to); var dx=dest.x-H.x, dy=dest.y-H.y; var d=Math.hypot(dx,dy); if(d<dest.r+8){ state.haulers.splice(hi,1); continue; } H.vx+=(dx/d)*0.03*dt; H.vy+=(dy/d)*0.03*dt; var spd=Math.hypot(H.vx,H.vy); if(spd>2){ H.vx=(H.vx/spd)*2; H.vy=(H.vy/spd)*2; } H.x+=H.vx*dt; H.y+=H.vy*dt; wrapEntity(H); if(H.agro){ H.cool-=1*dt; var dxp=state.ship.x-H.x, dyp=state.ship.y-H.y; var dp=Math.hypot(dxp,dyp); if(H.cool<=0 && dp<380){ var aa=Math.atan2(dyp,dxp); state.bullets.push({x:H.x+Math.cos(aa)*H.r,y:H.y+Math.sin(aa)*H.r,vx:Math.cos(aa)*6,vy:Math.sin(aa)*6,life:120,r:2.2,enemy:true}); H.cool=120; } }}
 
     // pirate vs asteroid collision (damage & split)
@@ -536,7 +580,10 @@ document.addEventListener('DOMContentLoaded', function(){
     }
 
     // black hole gravity — affects ship, asteroids, pirates, bullets
-    state.blackholes.forEach(function(h){ var soft=160; var maxPull=.45; var ents=[state.ship].concat(state.asteroids,state.pirates,state.bullets,state.haulers); ents.forEach(function(e){ var dx=h.x-e.x, dy=h.y-e.y; var d=Math.hypot(dx,dy); if(d<1) return; var pull=Math.min(1600/((d+soft)*(d+soft)), maxPull); e.vx+=(dx/d)*pull*dt; e.vy+=(dy/d)*pull*dt; if(d<h.r+10 && e!==state.ship){ if(e.r){ explode(e.x,e.y,10); } } }); });
+    state.blackholes.forEach(function(h){ var soft=160; var maxPull=.45; var ents=[state.ship].concat(state.asteroids,state.pirates,state.bullets,state.haulers,state.hunters); ents.forEach(function(e){ var dx=h.x-e.x, dy=h.y-e.y; var d=Math.hypot(dx,dy); if(d<1) return; var pull=Math.min(1600/((d+soft)*(d+soft)), maxPull); e.vx+=(dx/d)*pull*dt; e.vy+=(dy/d)*pull*dt; if(d<h.r+10 && e!==state.ship){ if(e.r){ explode(e.x,e.y,10); } } }); });
+
+    state.rifts.forEach(function(r){ r.x+=r.vx*dt; r.y+=r.vy*dt; wrapEntity(r); var soft=80; var maxPull=CFG.rifts.pull; var ents=[state.ship].concat(state.asteroids,state.pirates,state.bullets,state.haulers,state.hunters); ents.forEach(function(e){ var dx=r.x-e.x, dy=r.y-e.y; var d=Math.hypot(dx,dy); if(d<1) return; var pull=Math.min(800/((d+soft)*(d+soft)), maxPull); e.vx+=(dx/d)*pull*dt; e.vy+=(dy/d)*pull*dt; }); });
+
     if(s.centered){ s.x=s.centerX; s.y=s.centerY; s.vx=0; s.vy=0; }
 
     // stars: instant ship death
@@ -548,6 +595,10 @@ document.addEventListener('DOMContentLoaded', function(){
     // bullet collisions
     for(var ai=state.asteroids.length-1;ai>=0;ai--){ var AA=state.asteroids[ai]; var hit=false; for(var bj=state.bullets.length-1;bj>=0;bj--){ var b=state.bullets[bj]; if(b.enemy) continue; if(Math.hypot(AA.x-b.x,AA.y-b.y)<AA.r){ state.bullets.splice(bj,1); state.asteroids.splice(ai,1); explode(AA.x,AA.y,12); state.credits+=10; var pcs=splitAst(AA); state.asteroids.push.apply(state.asteroids,pcs); updateHUD(); hit=true; break; } } if(hit) continue; if(AA.layer>=PLANET_LAYER && state.ship.inv<=0 && Math.hypot(AA.x-state.ship.x,AA.y-state.ship.y)<AA.r+state.ship.r*.8){ var dmg = AA.r>=CFG.asteroid.sizes[0]?15:(AA.r>=CFG.asteroid.sizes[1]?10:5); damage(dmg); } }
     for(var pk=state.pirates.length-1;pk>=0;pk--){ var P=state.pirates[pk]; for(var bj2=state.bullets.length-1;bj2>=0;bj2--){ var bb=state.bullets[bj2]; if(bb.enemy) continue; if(Math.hypot(P.x-bb.x,P.y-bb.y)<P.r+3){ state.bullets.splice(bj2,1); P.hp-=6; explode(P.x,P.y,8); if(P.hp<=0){ state.pirates.splice(pk,1); state.credits+=40; updateHUD(); } break; } } if(state.ship.inv<=0 && Math.hypot(P.x-state.ship.x,P.y-state.ship.y)<P.r+state.ship.r*.8){ damage(12); } }
+
+    for(var bi=state.bases.length-1; bi>=0; bi--){ var B=state.bases[bi]; for(var bjb=state.bullets.length-1; bjb>=0; bjb--){ var bl=state.bullets[bjb]; if(bl.enemy) continue; if(Math.hypot(B.x-bl.x,B.y-bl.y)<B.r){ state.bullets.splice(bjb,1); B.hp-=10; explode(B.x,B.y,12); if(B.hp<=0){ state.bases.splice(bi,1); state.credits+=CFG.pirateBase.bounty; state.spawnTimer+=600; toast('Pirate base destroyed! +$'+CFG.pirateBase.bounty); updateHUD(); } break; } } if(state.ship.inv<=0 && Math.hypot(B.x-state.ship.x,B.y-state.ship.y)<B.r+state.ship.r*.8){ damage(20); } }
+
+    for(var hu=state.hunters.length-1; hu>=0; hu--){ var H=state.hunters[hu]; for(var bjh=state.bullets.length-1; bjh>=0; bjh--){ var bb2=state.bullets[bjh]; if(bb2.enemy) continue; if(Math.hypot(H.x-bb2.x,H.y-bb2.y)<H.r+3){ state.bullets.splice(bjh,1); explode(H.x,H.y,8); state.hunters.splice(hu,1); state.credits+=80; updateHUD(); break; } } if(state.ship.inv<=0 && Math.hypot(H.x-state.ship.x,H.y-state.ship.y)<H.r+state.ship.r*.8){ damage(15); } }
 
     for(var hk=state.haulers.length-1;hk>=0;hk--){ var HH=state.haulers[hk]; for(var bj3=state.bullets.length-1;bj3>=0;bj3--){ var b2=state.bullets[bj3]; if(Math.hypot(HH.x-b2.x,HH.y-b2.y)<HH.r+3){ state.bullets.splice(bj3,1); HH.hp-=6; if(!b2.enemy) HH.agro=true; if(HH.hp<=0){ state.haulers.splice(hk,1); } break; } } if(Math.hypot(HH.x-state.ship.x,HH.y-state.ship.y)<HH.r+state.ship.r*.8){ if(state.ship.inv<=0){ damage(8); HH.agro=true; } } }
 
@@ -611,10 +662,19 @@ document.addEventListener('DOMContentLoaded', function(){
 
     // black holes
     state.blackholes.forEach(function(h){ ctx.save(); ctx.translate(h.x,h.y); var grd=ctx.createRadialGradient(0,0,4,0,0,h.r); grd.addColorStop(0,'#111'); grd.addColorStop(1,'#000'); ctx.fillStyle=grd; ctx.beginPath(); ctx.arc(0,0,h.r,0,Math.PI*2); ctx.fill(); ctx.strokeStyle='rgba(109,184,242,.35)'; ctx.beginPath(); ctx.arc(0,0,h.r+10,0,Math.PI*2); ctx.stroke(); ctx.restore(); });
+    // gravity rifts
+    state.rifts.forEach(function(r){ ctx.save(); ctx.translate(r.x,r.y); ctx.strokeStyle='rgba(150,200,255,0.3)'; ctx.beginPath(); ctx.arc(0,0,r.r+6,0,Math.PI*2); ctx.stroke(); ctx.strokeStyle='rgba(150,200,255,0.15)'; ctx.beginPath(); ctx.arc(0,0,r.r+12,0,Math.PI*2); ctx.stroke(); ctx.restore(); });
 
     // stars (textured core + unstable telegraph)
     state.stars.forEach(function(st){ ctx.save(); ctx.translate(st.x, st.y); ctx.drawImage(st.tex,-st.tex.width/2,-st.tex.height/2); var g=ctx.createRadialGradient(0,0,2,0,0,st.r); g.addColorStop(0,'hsl('+st.hue+',80%,90%)'); g.addColorStop(0.4,'hsl('+st.hue+',80%,60%)'); g.addColorStop(1,'hsla('+st.hue+',80%,40%,0.2)'); ctx.globalCompositeOperation='lighter'; ctx.fillStyle=g; ctx.beginPath(); ctx.arc(0,0,st.r,0,Math.PI*2); ctx.fill(); ctx.globalCompositeOperation='source-over'; if(st.phase==='unstable'){ var pulse=(Math.sin(st.pulse)+1)*0.5; ctx.globalAlpha = 0.35 + 0.35*pulse; ctx.strokeStyle='rgba(255,220,120,0.8)'; ctx.lineWidth=2 + 3*pulse; ctx.beginPath(); ctx.arc(0,0, st.r + 10 + 6*pulse, 0, Math.PI*2); ctx.stroke(); ctx.globalAlpha=1; } ctx.restore(); });
     state.gates.forEach(function(g){ ctx.save(); ctx.strokeStyle='#9bf'; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(g.x,g.y,g.r,0,Math.PI*2); ctx.stroke(); ctx.restore(); });
+
+    // radiation zones
+    state.radiations.forEach(function(r){ ctx.save(); ctx.strokeStyle='rgba(0,255,0,0.25)'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(r.x,r.y,r.r,0,Math.PI*2); ctx.stroke(); ctx.restore(); });
+    // meteor event markers
+    state.meteorEvents.forEach(function(ev){ ctx.save(); ctx.strokeStyle='rgba(255,200,0,0.25)'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(ev.x,ev.y,240,0,Math.PI*2); ctx.stroke(); ctx.restore(); });
+    // mines
+    state.mines.forEach(function(m){ var b=(Math.sin(frame/20 + m.blink)+1)/2; ctx.fillStyle='rgba(255,180,180,'+(0.1+0.5*b)+')'; ctx.beginPath(); ctx.arc(m.x,m.y,2,0,Math.PI*2); ctx.fill(); });
 
     // particles
     state.particles.forEach(function(p){ ctx.globalAlpha=clamp(p.life/36,0,1); ctx.fillStyle='hsl('+p.h+',70%,70%)'; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();}); ctx.globalAlpha=1;
@@ -627,8 +687,17 @@ document.addEventListener('DOMContentLoaded', function(){
     // haulers
     state.haulers.forEach(function(h){ ctx.save(); ctx.translate(h.x,h.y); ctx.rotate(Math.atan2(h.vy,h.vx||1)); ctx.strokeStyle='#9fc'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(h.r,0); ctx.lineTo(-h.r*.6,-h.r*.6); ctx.lineTo(-h.r*.3,0); ctx.lineTo(-h.r*.6,h.r*.6); ctx.closePath(); ctx.stroke(); ctx.restore(); });
 
+    // pirate bases
+    state.bases.forEach(function(b){ ctx.save(); ctx.translate(b.x,b.y); ctx.fillStyle='#633'; ctx.beginPath(); ctx.arc(0,0,b.r,0,Math.PI*2); ctx.fill(); ctx.strokeStyle='#a33'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(0,0,b.r,0,Math.PI*2); ctx.stroke(); ctx.restore(); });
+
+    // patrols
+    state.patrols.forEach(function(p){ ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.a); ctx.strokeStyle='#4f8'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(p.r,0); ctx.lineTo(-p.r*0.6,-p.r*0.6); ctx.lineTo(-p.r*0.6,p.r*0.6); ctx.closePath(); ctx.stroke(); ctx.restore(); });
+
     // pirates
     state.pirates.forEach(function(p){ ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(Math.atan2(state.ship.y-p.y,state.ship.x-p.x)); ctx.strokeStyle='#ffb3b3'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(p.r,0); ctx.lineTo(-p.r*.6,-p.r*.6); ctx.lineTo(-p.r*.3,0); ctx.lineTo(-p.r*.6,p.r*.6); ctx.closePath(); ctx.stroke(); ctx.restore(); });
+
+    // bounty hunters
+    state.hunters.forEach(function(h){ ctx.save(); ctx.translate(h.x,h.y); ctx.rotate(Math.atan2(state.ship.y-h.y,state.ship.x-h.x)); ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(h.r,0); ctx.lineTo(-h.r*.6,-h.r*.6); ctx.lineTo(-h.r*.3,0); ctx.lineTo(-h.r*.6,h.r*.6); ctx.closePath(); ctx.stroke(); ctx.restore(); });
 
     // bullets
     state.bullets.forEach(function(b){ ctx.fillStyle=b.enemy?'#ffb0b0':'#ffffff'; ctx.shadowBlur=6; ctx.shadowColor=b.enemy?'#ff8a8a':'#6df2d6'; ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0; });
@@ -644,13 +713,15 @@ document.addEventListener('DOMContentLoaded', function(){
 
     ctx.restore();
 
+    if(state.inRadiation){ ctx.save(); ctx.fillStyle='rgba(0,255,0,0.12)'; ctx.fillRect(0,0,W,H); ctx.restore(); }
+
     // NAV ARROW to tracked destination (only if discovered)
     if(state.tracked){ var tm=state.missions.find(function(m){return m.id===state.tracked;}); if(tm){ var dest=planetById(tm.to); if(dest && state.discovered.has(dest.id)){ drawNavArrow(dest.x, dest.y, planetById(tm.to).name); } } }
 
     // minimap & fog
     mctx.clearRect(0,0,180,180); mctx.strokeStyle='rgba(255,255,255,.15)'; mctx.strokeRect(0,0,180,180); var sx=180/WORLD.w, sy=180/WORLD.h;
     function drawMini(x,y,color,sz){ mctx.fillStyle=color; sz=sz||3; mctx.fillRect(x*sx- sz/2, y*sy- sz/2, sz, sz); }
-    state.planets.forEach(function(p){ if(state.discovered.has(p.id)) drawMini(p.x,p.y,'#8be',4); }); state.blackholes.forEach(function(h){ drawMini(h.x,h.y,'#000',5); }); state.stars.forEach(function(st){ drawMini(st.x,st.y,'#ffd56b',4); }); state.asteroids.forEach(function(a){ drawMini(a.x,a.y,'#ccd',2); }); state.pirates.forEach(function(p){ drawMini(p.x,p.y,'#f88',3); }); state.haulers.forEach(function(h){ drawMini(h.x,h.y,'#9fc',3); }); state.comets.forEach(function(c){ drawMini(c.x,c.y,'#fff',3); }); if(!state.inNebula) drawMini(state.ship.x,state.ship.y,'#9cf',4); state.gates.forEach(function(g){ drawMini(g.x,g.y,'#9bf',3); });
+    state.planets.forEach(function(p){ if(state.discovered.has(p.id)) drawMini(p.x,p.y,'#8be',4); }); state.blackholes.forEach(function(h){ drawMini(h.x,h.y,'#000',5); }); state.rifts.forEach(function(r){ drawMini(r.x,r.y,'#88f',3); }); state.stars.forEach(function(st){ drawMini(st.x,st.y,'#ffd56b',4); }); state.asteroids.forEach(function(a){ drawMini(a.x,a.y,'#ccd',2); }); state.bases.forEach(function(b){ drawMini(b.x,b.y,'#f44',4); }); state.pirates.forEach(function(p){ drawMini(p.x,p.y,'#f88',3); }); state.hunters.forEach(function(h){ drawMini(h.x,h.y,'#fff',3); }); state.patrols.forEach(function(p){ drawMini(p.x,p.y,'#4f8',3); }); state.haulers.forEach(function(h){ drawMini(h.x,h.y,'#9fc',3); }); state.comets.forEach(function(c){ drawMini(c.x,c.y,'#fff',3); }); state.meteorEvents.forEach(function(ev){ drawMini(ev.x,ev.y,'#fa0',5); }); if(!state.inNebula) drawMini(state.ship.x,state.ship.y,'#9cf',4); state.gates.forEach(function(g){ drawMini(g.x,g.y,'#9bf',3); });
     minimapFog(sx,sy);
     mctx.strokeStyle='rgba(255,255,255,.5)'; mctx.strokeRect(cam.x*sx, cam.y*sy, W*sx, H*sy);
   }
@@ -669,7 +740,7 @@ document.addEventListener('DOMContentLoaded', function(){
   function discoverVisiblePlanets(){ for(var i=0;i<state.planets.length;i++){ var p=state.planets[i]; if(state.discovered.has(p.id)) continue; if(p.x>cam.x-p.r && p.x<cam.x+W+p.r && p.y>cam.y-p.r && p.y<cam.y+H+p.r){ state.discovered.add(p.id); toast('📡 Charted '+p.name); } } }
 
   function updateCamera(){ cam.x=clamp(state.ship.x - W/2, 0, WORLD.w - W); cam.y=clamp(state.ship.y - H/2, 0, WORLD.h - H); }
-  function loop(ts){ if(!running) return; if(!lastTime){ lastTime=ts; } var dt=(ts-lastTime)/(1000/60); if(dt<=0||dt>5) dt=1; lastTime=ts; if(!paused && !state.gameOver){ update(dt); } if(state) draw(); rAF(loop); }
+  function loop(ts){ if(!running) return; if(!lastTime){ lastTime=ts; } var dt=(ts-lastTime)/(1000/60); if(dt<=0||dt>5) dt=1; lastTime=ts; if(!paused && !state.gameOver){ update(dt); } if(state) draw(); frame++; rAF(loop); }
 
   function showPause(){ if(!running) return; paused=true; ui.pauseOverlay.classList.remove('hidden'); updatePauseStats(); }
   function hidePause(){ ui.pauseOverlay.classList.add('hidden'); paused=false; }
