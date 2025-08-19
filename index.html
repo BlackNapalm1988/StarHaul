@@ -242,6 +242,17 @@ document.addEventListener('DOMContentLoaded', function(){
   var cam={x:0,y:0};
 
   var state=null, paused=false, running=false, lastTime=0, offerTimer=0, frame=0;
+  var playerImg=new Image(), playerImgReady=false;
+  playerImg.onload=function(){ playerImgReady=true; };
+  playerImg.onerror=function(){ console.warn('Player sprite failed to load'); };
+  playerImg.src='player_sprite_sheet.png';
+
+  function shipFrame(s){
+    if(state && state.docked){ return 12 + Math.floor(frame/8)%3; }
+    if(s.inv>0){ return 8 + Math.floor(frame/8)%3; }
+    if(s.thrust){ return 1 + Math.floor(frame/8)%3; }
+    return 0;
+  }
 
   function newShip(){
     return {
@@ -705,7 +716,15 @@ document.addEventListener('DOMContentLoaded', function(){
     // ship
     var s=state.ship; var flicker=s.inv>0 && s.blink>CFG.ship.blink/2 && !s.justSpawned; if(!(flicker && Math.floor(s.inv)%2===0)){
       s.trail.forEach(function(t){ var alpha=clamp(t.life/22,0,1); ctx.fillStyle='rgba(109,242,214,'+(alpha*.35)+')'; ctx.beginPath(); ctx.arc(t.x,t.y,3*(alpha+.2),0,Math.PI*2); ctx.fill(); });
-      ctx.save(); ctx.translate(s.x,s.y); ctx.rotate(s.a); var body=ctx.createLinearGradient(-s.r,s.r,s.r,-s.r); body.addColorStop(0,'#2a3448'); body.addColorStop(1,'#3b4a66'); ctx.fillStyle=body; ctx.strokeStyle='#9cebdc'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(s.r,0); ctx.lineTo(-s.r*.7,-s.r*.65); ctx.lineTo(-s.r,0); ctx.lineTo(-s.r*.7,s.r*.65); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.rect(-s.r*.95,-6, -11,12); ctx.stroke(); ctx.restore();
+      ctx.save(); ctx.translate(s.x,s.y); ctx.rotate(s.a);
+      if(playerImgReady){
+        var idx=shipFrame(s);
+        var sx=(idx%4)*128, sy=Math.floor(idx/4)*128;
+        ctx.drawImage(playerImg, sx, sy, 128,128, -s.r, -s.r, s.r*2, s.r*2);
+      } else {
+        var body=ctx.createLinearGradient(-s.r,s.r,s.r,-s.r); body.addColorStop(0,'#2a3448'); body.addColorStop(1,'#3b4a66'); ctx.fillStyle=body; ctx.strokeStyle='#9cebdc'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(s.r,0); ctx.lineTo(-s.r*.7,-s.r*.65); ctx.lineTo(-s.r,0); ctx.lineTo(-s.r*.7,s.r*.65); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.rect(-s.r*.95,-6, -11,12); ctx.stroke();
+      }
+      ctx.restore();
     }
 
     var near=nearbyPlanet(); if(near && !state.docked){ ctx.fillStyle='rgba(255,255,255,.8)'; ctx.font='12px ui-sans-serif'; ctx.fillText('Press E to Dock', near.x-30, near.y-near.r-6); }
