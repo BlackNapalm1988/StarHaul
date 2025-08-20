@@ -56,20 +56,19 @@ export function toast(msg) {
 }
 
 export function bindUIHandlers(handlers) {
-  if (!ui.pauseBtn) return;
-  ui.pauseBtn.addEventListener('click', handlers.showPause);
-  ui.restartBtn.addEventListener('click', handlers.restartGame);
-  ui.undockBtn.addEventListener('click', handlers.undock);
-  ui.setHomeBtn.addEventListener('click', handlers.setHome);
-  ui.missionPill.addEventListener('click', handlers.toggleMissionLog);
-  ui.newGameBtn.addEventListener('click', handlers.startNewGame);
-  ui.viewScoresBtn.addEventListener('click', handlers.viewScores);
-  ui.quitBtn.addEventListener('click', handlers.quitToMenu);
-  ui.resumeBtn.addEventListener('click', handlers.hidePause);
-  ui.pauseRestartBtn.addEventListener('click', handlers.pauseRestart);
-  ui.toMenuBtn.addEventListener('click', handlers.pauseToMenu);
-  ui.saveScoreBtn.addEventListener('click', handlers.saveScore);
-  ui.goMenuBtn.addEventListener('click', handlers.showMenu);
+  if (ui.pauseBtn) ui.pauseBtn.addEventListener('click', handlers.showPause);
+  if (ui.restartBtn) ui.restartBtn.addEventListener('click', handlers.restartGame);
+  if (ui.undockBtn) ui.undockBtn.addEventListener('click', handlers.undock);
+  if (ui.setHomeBtn) ui.setHomeBtn.addEventListener('click', handlers.setHome);
+  if (ui.missionPill) ui.missionPill.addEventListener('click', handlers.toggleMissionLog);
+  if (ui.newGameBtn) ui.newGameBtn.addEventListener('click', handlers.startNewGame);
+  if (ui.viewScoresBtn) ui.viewScoresBtn.addEventListener('click', handlers.viewScores);
+  if (ui.quitBtn) ui.quitBtn.addEventListener('click', handlers.quitToMenu);
+  if (ui.resumeBtn) ui.resumeBtn.addEventListener('click', handlers.hidePause);
+  if (ui.pauseRestartBtn) ui.pauseRestartBtn.addEventListener('click', handlers.pauseRestart);
+  if (ui.toMenuBtn) ui.toMenuBtn.addEventListener('click', handlers.pauseToMenu);
+  if (ui.saveScoreBtn) ui.saveScoreBtn.addEventListener('click', handlers.saveScore);
+  if (ui.goMenuBtn) ui.goMenuBtn.addEventListener('click', handlers.showMenu);
   document.querySelectorAll('[data-buy]').forEach(b => {
     b.onclick = () => handlers.marketBuy(b.getAttribute('data-buy'));
   });
