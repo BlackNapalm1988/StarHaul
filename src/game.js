@@ -5,7 +5,11 @@ import { CFG, newShip, makePlanet, makeStar } from './entities.js';
 let canvas;
 let ctx;
 
+// runtime state
 let state = null;
+let keys = { left: false, right: false, thrust: false };
+let paused = true;
+let running = false;
 
 function startNewGame() {
   state = { ship: newShip(), planets: [], stars: [] };
@@ -16,28 +20,64 @@ function startNewGame() {
   for (let s = 0; s < CFG.stars; s++) state.stars.push(makeStar());
   // hide the start screen so the game canvas is visible
   ui.startScreen?.classList.add('hidden');
+  ui.pauseOverlay?.classList.add('hidden');
+  paused = false;
   toast('Game started');
 }
 
-function showPause() { toast('Paused'); }
-function restartGame() { startNewGame(); }
+function showPause() {
+  if (paused) return;
+  paused = true;
+  ui.pauseOverlay?.classList.remove('hidden');
+}
+
+function hidePause() {
+  paused = false;
+  ui.pauseOverlay?.classList.add('hidden');
+}
+
+function restartGame() { initGame(); }
+function pauseRestart() { hidePause(); initGame(); }
+function pauseToMenu() { hidePause(); showMenu(); }
+function quitToMenu() { showMenu(); }
 function undock() {}
 function setHome() {}
 function toggleMissionLog() {
   ui.missionLog.style.display = ui.missionLog.style.display === 'none' ? 'block' : 'none';
 }
 function viewScores() {}
-function quitToMenu() {}
-function hidePause() {}
-function pauseRestart() {}
-function pauseToMenu() {}
 function saveScore() {}
-function showMenu() {}
+function showMenu() {
+  paused = true;
+  ui.startScreen?.classList.remove('hidden');
+  ui.pauseOverlay?.classList.add('hidden');
+}
 function marketBuy() {}
+
+function handleKey(e, down) {
+  switch (e.key) {
+    case 'ArrowLeft':
+      keys.left = down;
+      break;
+    case 'ArrowRight':
+      keys.right = down;
+      break;
+    case 'ArrowUp':
+      keys.thrust = down;
+      break;
+    case 'p':
+    case 'P':
+      if (down) paused ? hidePause() : showPause();
+      break;
+  }
+}
 
 document.addEventListener('DOMContentLoaded', () => {
   canvas = document.getElementById('game');
   ctx = canvas.getContext('2d');
+
+  document.addEventListener('keydown', e => handleKey(e, true));
+  document.addEventListener('keyup', e => handleKey(e, false));
 
   bindUIHandlers({
     showPause,
@@ -55,6 +95,9 @@ document.addEventListener('DOMContentLoaded', () => {
     showMenu,
     marketBuy
   });
+
+  // ensure the start screen is visible after refresh
+  showMenu();
 });
 
 function drawShip(ship) {
@@ -72,17 +115,44 @@ function drawShip(ship) {
   ctx.restore();
 }
 
+function drawPlanet(p) {
+  ctx.drawImage(p.tex, p.x - p.tex.width / 2, p.y - p.tex.height / 2);
+}
+
+function drawStar(s) {
+  ctx.drawImage(s.tex, s.x - s.tex.width / 2, s.y - s.tex.height / 2);
+}
+
+function updateShip(ship) {
+  if (keys.left) ship.a -= CFG.ship.turn;
+  if (keys.right) ship.a += CFG.ship.turn;
+  if (keys.thrust) {
+    ship.vx += Math.cos(ship.a) * CFG.ship.accel;
+    ship.vy += Math.sin(ship.a) * CFG.ship.accel;
+  }
+  ship.x += ship.vx;
+  ship.y += ship.vy;
+  ship.vx *= CFG.ship.friction;
+  ship.vy *= CFG.ship.friction;
+}
+
 function render() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  state.planets.forEach(drawPlanet);
+  state.stars.forEach(drawStar);
   drawShip(state.ship);
 }
 
 function loop() {
+  if (!paused) updateShip(state.ship);
   render();
   requestAnimationFrame(loop);
 }
 
 export function initGame() {
   startNewGame();
-  requestAnimationFrame(loop);
+  if (!running) {
+    running = true;
+    requestAnimationFrame(loop);
+  }
 }
