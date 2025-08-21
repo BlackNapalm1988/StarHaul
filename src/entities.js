@@ -115,7 +115,7 @@ export function makePlanet(i) {
   return p;
 }
 
-export function makeStar(x, y) {
+export function makeStar(x = rand(200, WORLD.w - 200), y = rand(200, WORLD.h - 200)) {
   const r = irand(36, 88);
   const life = irand(CFG.supernova.minLife, CFG.supernova.maxLife);
   const tex = bakePlanetTexture({ r, type: 'star' }).planet;
