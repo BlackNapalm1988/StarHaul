@@ -2,12 +2,12 @@ import { ui, toast, bindUIHandlers } from './ui.js';
 import { CFG, newShip, makePlanet, makeStar } from './entities.js';
 
 // Canvas setup for simple rendering without sprite graphics
-const canvas = document.getElementById('game');
-const ctx = canvas.getContext('2d');
+let canvas;
+let ctx;
 
 let state = null;
 
-export function startNewGame() {
+function startNewGame() {
   state = { ship: newShip(), planets: [], stars: [] };
   // centre the ship on the canvas
   state.ship.x = canvas.width / 2;
@@ -35,21 +35,26 @@ function saveScore() {}
 function showMenu() {}
 function marketBuy() {}
 
-bindUIHandlers({
-  showPause,
-  restartGame,
-  undock,
-  setHome,
-  toggleMissionLog,
-  startNewGame,
-  viewScores,
-  quitToMenu,
-  hidePause,
-  pauseRestart,
-  pauseToMenu,
-  saveScore,
-  showMenu,
-  marketBuy
+document.addEventListener('DOMContentLoaded', () => {
+  canvas = document.getElementById('game');
+  ctx = canvas.getContext('2d');
+
+  bindUIHandlers({
+    showPause,
+    restartGame,
+    undock,
+    setHome,
+    toggleMissionLog,
+    startNewGame: initGame,
+    viewScores,
+    quitToMenu,
+    hidePause,
+    pauseRestart,
+    pauseToMenu,
+    saveScore,
+    showMenu,
+    marketBuy
+  });
 });
 
 function drawShip(ship) {
