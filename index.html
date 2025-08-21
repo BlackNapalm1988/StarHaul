@@ -29,7 +29,7 @@
     .item:nth-child(odd){background:rgba(255,255,255,.03)}
     .badge{padding:2px 6px;border-radius:999px;background:rgba(255,255,255,.08);font-size:12px}
     #missionPill{cursor:pointer}
-    #radar{position:absolute;right:16px;bottom:16px;width:240px;height:240px;border-radius:50%;background:rgba(10,14,22,.65);outline:1px solid rgba(255,255,255,.08);display:grid;place-items:center;font-size:12px;z-index:2;overflow:hidden}
+    #radar{position:absolute;right:16px;bottom:16px;width:480px;height:480px;border-radius:50%;background:rgba(10,14,22,.65);outline:1px solid rgba(255,255,255,.08);display:grid;place-items:center;font-size:12px;z-index:2;overflow:hidden}
     #radar canvas{border-radius:50%}
     #touchpad{position:absolute;bottom:20px;left:20px;right:20px;display:none;justify-content:space-between;pointer-events:none}
     .pad{display:grid;grid-template-columns:repeat(2,68px);grid-template-rows:repeat(2,68px);gap:10px;pointer-events:auto}
@@ -42,6 +42,10 @@
     #toasts{position:absolute;left:50%;top:20px;transform:translateX(-50%);display:flex;flex-direction:column;gap:8px;pointer-events:none;z-index:6}
     .toast{padding:8px 12px;border-radius:10px;background:rgba(20,28,44,.9);outline:1px solid rgba(255,255,255,.08);box-shadow:0 6px 18px rgba(0,0,0,.4)}
     .overlay{position:absolute;inset:0;display:grid;place-items:center;background:radial-gradient(900px 600px at 50% 30%,rgba(10,14,22,.55),rgba(7,10,16,.85));backdrop-filter:blur(2px);z-index:5}
+    #mapKey{position:absolute;top:20px;left:20px;padding:8px 10px;border-radius:8px;background:rgba(0,0,0,.55);font-size:14px;line-height:1.4}
+    #mapKey div{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+    #mapKey div:last-child{margin-bottom:0}
+    #mapKey .swatch{width:12px;height:12px;border-radius:2px;display:inline-block}
     #startScreen .actions{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
     #startScreen img.start-image{width:100%;height:auto;}
     #leaderboard{margin-top:12px}
@@ -96,10 +100,21 @@
       </div>
     </div>
 
-    <div id="radar"><canvas id="mini" width="220" height="220" aria-hidden="true"></canvas></div>
+    <div id="radar"><canvas id="mini" width="440" height="440" aria-hidden="true"></canvas></div>
     <div id="toasts"></div>
 
-    <div id="mapOverlay" class="overlay hidden"><canvas id="bigmap" width="800" height="600" aria-hidden="true"></canvas></div>
+    <div id="mapOverlay" class="overlay hidden">
+      <canvas id="bigmap" width="800" height="600" aria-hidden="true"></canvas>
+      <div id="mapKey" class="map-key">
+        <div><span class="swatch" style="background:#8be"></span> Planet</div>
+        <div><span class="swatch" style="background:#000"></span> Black Hole</div>
+        <div><span class="swatch" style="background:#88f"></span> Rift</div>
+        <div><span class="swatch" style="background:#ffd56b"></span> Star</div>
+        <div><span class="swatch" style="background:#f44"></span> Pirate Base</div>
+        <div><span class="swatch" style="background:#9bf"></span> Gate</div>
+        <div><span class="swatch" style="background:#9cf"></span> Your Ship</div>
+      </div>
+    </div>
 
     <div id="touchpad" aria-hidden="true">
       <div class="pad" id="leftPad">
@@ -185,12 +200,12 @@ document.addEventListener('DOMContentLoaded', function(){
 
   var DEBUG = (location.hash.indexOf('dev')>=0);
 
-  var W=960, H=600; var WORLD={w:10400,h:7800}; var MINI_SIZE=220, MINI_RANGE=3000;
+  var W=960, H=600; var WORLD={w:10400,h:7800}; var MINI_SIZE=440, MINI_RANGE=6000;
   var $=function(sel){ return document.querySelector(sel); };
   var wrap=$('.wrap'); if(!wrap){ wrap=document.createElement('div'); wrap.className='wrap'; document.body.appendChild(wrap); }
   var canvas=$('#game'); if(!canvas){ canvas=document.createElement('canvas'); canvas.id='game'; canvas.width=960; canvas.height=600; wrap.insertBefore(canvas, wrap.firstChild||null); }
   var ctx=canvas.getContext('2d'); if(!ctx){ alert('Canvas failed to initialize.'); return; }
-  var mini=$('#mini'); if(!mini){ var radar=document.createElement('div'); radar.id='radar'; radar.style.position='absolute'; radar.style.right='16px'; radar.style.bottom='16px'; radar.style.width='240px'; radar.style.height='240px'; radar.style.borderRadius='50%'; radar.style.background='rgba(10,14,22,.65)'; radar.style.outline='1px solid rgba(255,255,255,.08)'; radar.style.display='grid'; radar.style.placeItems='center'; radar.style.overflow='hidden'; mini=document.createElement('canvas'); mini.id='mini'; mini.width=MINI_SIZE; mini.height=MINI_SIZE; mini.style.borderRadius='50%'; radar.appendChild(mini); wrap.appendChild(radar); } else { mini.width=MINI_SIZE; mini.height=MINI_SIZE; mini.style.borderRadius='50%'; }
+  var mini=$('#mini'); if(!mini){ var radar=document.createElement('div'); radar.id='radar'; radar.style.position='absolute'; radar.style.right='16px'; radar.style.bottom='16px'; radar.style.width='480px'; radar.style.height='480px'; radar.style.borderRadius='50%'; radar.style.background='rgba(10,14,22,.65)'; radar.style.outline='1px solid rgba(255,255,255,.08)'; radar.style.display='grid'; radar.style.placeItems='center'; radar.style.overflow='hidden'; mini=document.createElement('canvas'); mini.id='mini'; mini.width=MINI_SIZE; mini.height=MINI_SIZE; mini.style.borderRadius='50%'; radar.appendChild(mini); wrap.appendChild(radar); } else { mini.width=MINI_SIZE; mini.height=MINI_SIZE; mini.style.borderRadius='50%'; }
   var mctx=mini.getContext('2d');
 
   var ui={
@@ -731,13 +746,15 @@ document.addEventListener('DOMContentLoaded', function(){
     // NAV ARROW to tracked destination (only if discovered)
     if(state.tracked){ var tm=state.missions.find(function(m){return m.id===state.tracked;}); if(tm){ var dest=planetById(tm.to); if(dest && state.discovered.has(dest.id)){ drawNavArrow(dest.x, dest.y, planetById(tm.to).name); } } }
 
-    // minimap centered on ship
+    // minimap centered on view
     mctx.clearRect(0,0,MINI_SIZE,MINI_SIZE);
     var range=MINI_RANGE; var sx=MINI_SIZE/range, sy=MINI_SIZE/range; var half=MINI_SIZE/2;
-    function drawMini(x,y,color,sz){ var dx=(x-state.ship.x)*sx+half; var dy=(y-state.ship.y)*sy+half; if(dx<-4||dx>MINI_SIZE+4||dy<-4||dy>MINI_SIZE+4) return; mctx.fillStyle=color; sz=sz||4; mctx.fillRect(dx- sz/2, dy- sz/2, sz, sz); }
+    var viewX=cam.x+W/2, viewY=cam.y+H/2;
+    function drawMini(x,y,color,sz){ var dx=(x-viewX)*sx+half; var dy=(y-viewY)*sy+half; if(dx<-4||dx>MINI_SIZE+4||dy<-4||dy>MINI_SIZE+4) return; mctx.fillStyle=color; sz=sz||4; mctx.fillRect(dx- sz/2, dy- sz/2, sz, sz); }
     state.planets.forEach(function(p){ if(state.discovered.has(p.id)) drawMini(p.x,p.y,'#8be',4); }); state.blackholes.forEach(function(h){ drawMini(h.x,h.y,'#000',5); }); state.rifts.forEach(function(r){ drawMini(r.x,r.y,'#88f',3); }); state.stars.forEach(function(st){ drawMini(st.x,st.y,'#ffd56b',4); }); state.asteroids.forEach(function(a){ drawMini(a.x,a.y,'#ccd',2); }); state.bases.forEach(function(b){ drawMini(b.x,b.y,'#f44',4); }); state.pirates.forEach(function(p){ drawMini(p.x,p.y,'#f88',3); }); state.hunters.forEach(function(h){ drawMini(h.x,h.y,'#fff',3); }); state.patrols.forEach(function(p){ drawMini(p.x,p.y,'#4f8',3); }); state.haulers.forEach(function(h){ drawMini(h.x,h.y,'#9fc',3); }); state.comets.forEach(function(c){ drawMini(c.x,c.y,'#fff',3); }); state.meteorEvents.forEach(function(ev){ drawMini(ev.x,ev.y,'#fa0',5); }); state.gates.forEach(function(g){ drawMini(g.x,g.y,'#9bf',3); });
-    // ship dot at center
-    mctx.fillStyle='#9cf'; mctx.fillRect(half-2, half-2, 4, 4);
+    // ship position
+    var shipDx=(state.ship.x-viewX)*sx+half, shipDy=(state.ship.y-viewY)*sy+half;
+    mctx.fillStyle='#9cf'; mctx.fillRect(shipDx-2, shipDy-2, 4, 4);
     mctx.strokeStyle='rgba(255,255,255,.15)'; mctx.beginPath(); mctx.arc(half,half,half-1,0,Math.PI*2); mctx.stroke();
   }
 
@@ -754,7 +771,7 @@ document.addEventListener('DOMContentLoaded', function(){
     var bw=ui.bigmap.width, bh=ui.bigmap.height;
     bctx.clearRect(0,0,bw,bh);
     var sx=bw/WORLD.w, sy=bh/WORLD.h;
-    function drawBig(x,y,color,sz){ bctx.fillStyle=color; sz=sz||4; bctx.fillRect(x*sx- sz/2, y*sy- sz/2, sz, sz); }
+    function drawBig(x,y,color,sz){ if(!state.fow.has(cellOf(x,y))) return; bctx.fillStyle=color; sz=sz||4; bctx.fillRect(x*sx- sz/2, y*sy- sz/2, sz, sz); }
     state.planets.forEach(function(p){ if(state.discovered.has(p.id)) drawBig(p.x,p.y,'#8be',5); });
     state.blackholes.forEach(function(h){ drawBig(h.x,h.y,'#000',6); });
     state.rifts.forEach(function(r){ drawBig(r.x,r.y,'#88f',4); });
