@@ -580,9 +580,14 @@ document.addEventListener('DOMContentLoaded', function(){
     }
 
     // black hole gravity — affects ship, asteroids, pirates, bullets
-    state.blackholes.forEach(function(h){ var soft=160; var maxPull=.45; var ents=[state.ship].concat(state.asteroids,state.pirates,state.bullets,state.haulers,state.hunters); ents.forEach(function(e){ var dx=h.x-e.x, dy=h.y-e.y; var d=Math.hypot(dx,dy); if(d<1) return; var pull=Math.min(1600/((d+soft)*(d+soft)), maxPull); e.vx+=(dx/d)*pull*dt; e.vy+=(dy/d)*pull*dt; if(d<h.r+10 && e!==state.ship){ if(e.r){ explode(e.x,e.y,10); } } }); });
+    state.blackholes.forEach(function(h){
+      applyGravity(h, 160, 1600, .45, dt, h.r+10);
+    });
 
-    state.rifts.forEach(function(r){ r.x+=r.vx*dt; r.y+=r.vy*dt; wrapEntity(r); var soft=80; var maxPull=CFG.rifts.pull; var ents=[state.ship].concat(state.asteroids,state.pirates,state.bullets,state.haulers,state.hunters); ents.forEach(function(e){ var dx=r.x-e.x, dy=r.y-e.y; var d=Math.hypot(dx,dy); if(d<1) return; var pull=Math.min(800/((d+soft)*(d+soft)), maxPull); e.vx+=(dx/d)*pull*dt; e.vy+=(dy/d)*pull*dt; }); });
+    state.rifts.forEach(function(r){
+      r.x+=r.vx*dt; r.y+=r.vy*dt; wrapEntity(r);
+      applyGravity(r, 80, 800, CFG.rifts.pull, dt);
+    });
 
     if(s.centered){ s.x=s.centerX; s.y=s.centerY; s.vx=0; s.vy=0; }
 
@@ -761,6 +766,22 @@ document.addEventListener('DOMContentLoaded', function(){
   function tryDeliver(){ if(!state || !state.docked) return; var here=state.docked; var delivered=0, paid=0; var deliverables=state.missions.filter(function(m){return m.to===here.id && m.active;}); deliverables.forEach(function(m){ state.credits+=m.reward; paid+=m.reward; state.cargo-=m.qty; delivered++; m.active=false; state.reputation+=1; }); state.missions=state.missions.filter(function(m){return m.active;}); if(delivered>0){ toast('Delivered '+delivered+' contract(s) +$'+paid+' • Rep +'+delivered); updateHUD(); } }
 
   function wrapEntity(e){ if(e.x<0) e.x+=WORLD.w; if(e.x>WORLD.w) e.x-=WORLD.w; if(e.y<0) e.y+=WORLD.h; if(e.y>WORLD.h) e.y-=WORLD.h; }
+
+  function applyGravity(src, soft, force, maxPull, dt, destroyRadius){
+    pull(src, state.ship);
+    var groups=[state.asteroids,state.pirates,state.bullets,state.haulers,state.hunters];
+    for(var gi=0;gi<groups.length;gi++){
+      var g=groups[gi];
+      for(var i=0;i<g.length;i++){ pull(src, g[i]); }
+    }
+    function pull(src, e){
+      var dx=src.x-e.x, dy=src.y-e.y; var d=Math.hypot(dx,dy);
+      if(d<1) return;
+      var pull=Math.min(force/((d+soft)*(d+soft)), maxPull);
+      e.vx+=(dx/d)*pull*dt; e.vy+=(dy/d)*pull*dt;
+      if(destroyRadius && d<destroyRadius && e!==state.ship && e.r){ explode(e.x,e.y,10); }
+    }
+  }
 
   // Planet texture baker
   function bakePlanetTexture(p){
