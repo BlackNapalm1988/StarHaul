@@ -199,17 +199,26 @@
 document.addEventListener('DOMContentLoaded', function(){
   'use strict';
 
+  function debounce(fn, delay){
+    var t;
+    return function(){
+      var ctx=this, args=arguments;
+      clearTimeout(t);
+      t=setTimeout(function(){ fn.apply(ctx,args); }, delay);
+    };
+  }
+
   var DEBUG = (location.hash.indexOf('dev')>=0);
 
-  var W=window.innerWidth, H=window.innerHeight; var WORLD={w:10400,h:7800}; var MINI_SIZE=440;
-  var RADAR_BASE_RANGE;
+  let W=window.innerWidth, H=window.innerHeight; const WORLD={w:10400,h:7800}; const MINI_SIZE=440;
+  let RADAR_BASE_RANGE;
   var $=function(sel){ return document.querySelector(sel); };
   var wrap=$('.wrap'); if(!wrap){ wrap=document.createElement('div'); wrap.className='wrap'; document.body.appendChild(wrap); }
   var canvas=$('#game'); if(!canvas){ canvas=document.createElement('canvas'); canvas.id='game'; wrap.insertBefore(canvas, wrap.firstChild||null); }
   var ctx=canvas.getContext('2d'); if(!ctx){ alert('Canvas failed to initialize.'); return; }
   function resize(){ W=window.innerWidth; H=window.innerHeight; canvas.width=W; canvas.height=H; RADAR_BASE_RANGE=Math.hypot(W/2, H/2)*2*1.25; }
   resize();
-  window.addEventListener('resize', resize);
+  window.addEventListener('resize', debounce(resize, 150));
   var mini=$('#mini'); if(!mini){ var radar=document.createElement('div'); radar.id='radar'; radar.style.position='absolute'; radar.style.right='16px'; radar.style.bottom='16px'; radar.style.width='480px'; radar.style.height='480px'; radar.style.borderRadius='50%'; radar.style.background='rgba(10,14,22,.65)'; radar.style.outline='1px solid rgba(255,255,255,.08)'; radar.style.display='grid'; radar.style.placeItems='center'; radar.style.overflow='hidden'; mini=document.createElement('canvas'); mini.id='mini'; mini.width=MINI_SIZE; mini.height=MINI_SIZE; mini.style.borderRadius='50%'; radar.appendChild(mini); wrap.appendChild(radar); } else { mini.width=MINI_SIZE; mini.height=MINI_SIZE; mini.style.borderRadius='50%'; }
   var mctx=mini.getContext('2d');
 
