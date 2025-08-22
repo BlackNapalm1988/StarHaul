@@ -785,21 +785,45 @@ document.addEventListener('DOMContentLoaded', function(){
     var bw=ui.bigmap.width, bh=ui.bigmap.height;
     bctx.clearRect(0,0,bw,bh);
     var sx=bw/WORLD.w, sy=bh/WORLD.h;
-    function drawBig(x,y,color,sz){ if(!state.fow.has(cellOf(x,y))) return; bctx.fillStyle=color; sz=sz||4; bctx.fillRect(x*sx- sz/2, y*sy- sz/2, sz, sz); }
-    state.planets.forEach(function(p){ if(state.discovered.has(p.id)) drawBig(p.x,p.y,'#8be',5); });
-    state.blackholes.forEach(function(h){ drawBig(h.x,h.y,'#000',6); });
-    state.rifts.forEach(function(r){ drawBig(r.x,r.y,'#88f',4); });
-    state.stars.forEach(function(st){ drawBig(st.x,st.y,'#ffd56b',5); });
-    state.asteroids.forEach(function(a){ drawBig(a.x,a.y,'#ccd',3); });
-    state.bases.forEach(function(b){ drawBig(b.x,b.y,'#f44',5); });
-    state.pirates.forEach(function(p){ drawBig(p.x,p.y,'#f88',4); });
-    state.hunters.forEach(function(h){ drawBig(h.x,h.y,'#fff',4); });
-    state.patrols.forEach(function(p){ drawBig(p.x,p.y,'#4f8',4); });
-    state.haulers.forEach(function(h){ drawBig(h.x,h.y,'#9fc',4); });
-    state.comets.forEach(function(c){ drawBig(c.x,c.y,'#fff',4); });
+    function drawBig(x,y,color,r,heading){
+      if(!state.fow.has(cellOf(x,y))) return;
+      bctx.fillStyle=color;
+      var px=x*sx, py=y*sy;
+      if(typeof heading === 'number'){
+        var size=r||4;
+        bctx.save();
+        bctx.translate(px,py);
+        bctx.rotate(heading);
+        bctx.beginPath();
+        bctx.moveTo(size,0);
+        bctx.lineTo(-size*0.6,-size*0.8);
+        bctx.lineTo(-size*0.6,size*0.8);
+        bctx.closePath();
+        bctx.fill();
+        bctx.restore();
+      } else if(r){
+        bctx.beginPath();
+        bctx.arc(px,py,r,0,Math.PI*2);
+        bctx.fill();
+      } else {
+        var sz=4;
+        bctx.fillRect(px- sz/2, py- sz/2, sz, sz);
+      }
+    }
+    state.planets.forEach(function(p){ if(state.discovered.has(p.id)) drawBig(p.x,p.y,'#8be',p.r*sx); });
+    state.blackholes.forEach(function(h){ drawBig(h.x,h.y,'#000',h.r*sx); });
+    state.rifts.forEach(function(r){ drawBig(r.x,r.y,'#88f',r.r*sx); });
+    state.stars.forEach(function(st){ drawBig(st.x,st.y,'#ffd56b',st.r*sx); });
+    state.asteroids.forEach(function(a){ drawBig(a.x,a.y,'#ccd',a.r*sx); });
+    state.bases.forEach(function(b){ drawBig(b.x,b.y,'#f44',b.r*sx); });
+    state.pirates.forEach(function(p){ drawBig(p.x,p.y,'#f88',p.r*sx); });
+    state.hunters.forEach(function(h){ drawBig(h.x,h.y,'#fff',h.r*sx); });
+    state.patrols.forEach(function(p){ drawBig(p.x,p.y,'#4f8',p.r*sx); });
+    state.haulers.forEach(function(h){ drawBig(h.x,h.y,'#9fc',h.r*sx); });
+    state.comets.forEach(function(c){ drawBig(c.x,c.y,'#fff',c.r*sx); });
     state.meteorEvents.forEach(function(ev){ drawBig(ev.x,ev.y,'#fa0',6); });
-    state.gates.forEach(function(g){ drawBig(g.x,g.y,'#9bf',4); });
-    drawBig(state.ship.x,state.ship.y,'#9cf',5);
+    state.gates.forEach(function(g){ drawBig(g.x,g.y,'#9bf',g.r*sx); });
+    drawBig(state.ship.x,state.ship.y,'#9cf',state.ship.r*sx,state.ship.a);
     drawFog(bctx,sx,sy);
     bctx.strokeStyle='rgba(255,255,255,.5)'; bctx.strokeRect(cam.x*sx, cam.y*sy, W*sx, H*sy);
   }
