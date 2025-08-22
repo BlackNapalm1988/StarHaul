@@ -754,21 +754,34 @@ document.addEventListener('DOMContentLoaded', function(){
     mctx.clearRect(0,0,MINI_SIZE,MINI_SIZE);
     var range=getRadarRange(); var sx=MINI_SIZE/range, sy=MINI_SIZE/range; var half=MINI_SIZE/2;
     var viewX=state.ship.x, viewY=state.ship.y;
-    function drawMini(x,y,color,sz,vx,vy){ var dx=(x-viewX)*sx+half; var dy=(y-viewY)*sy+half; if(dx<-4||dx>MINI_SIZE+4||dy<-4||dy>MINI_SIZE+4) return; mctx.fillStyle=color; sz=sz||4; mctx.fillRect(dx- sz/2, dy- sz/2, sz, sz); if(vx||vy){ mctx.strokeStyle=color; mctx.beginPath(); mctx.moveTo(dx,dy); mctx.lineTo(dx+vx*sx*20, dy+vy*sy*20); mctx.stroke(); } }
-    state.planets.forEach(function(p){ if(state.discovered.has(p.id)) drawMini(p.x,p.y,'#8be',4); });
-    state.blackholes.forEach(function(h){ drawMini(h.x,h.y,'#000',5); });
-    state.rifts.forEach(function(r){ drawMini(r.x,r.y,'#88f',3,r.vx,r.vy); });
-    state.stars.forEach(function(st){ drawMini(st.x,st.y,'#ffd56b',4); });
-    state.asteroids.forEach(function(a){ drawMini(a.x,a.y,'#ccd',2,a.vx,a.vy); });
-    state.bases.forEach(function(b){ drawMini(b.x,b.y,'#f44',4); });
-    state.pirates.forEach(function(p){ drawMini(p.x,p.y,'#f88',3,p.vx,p.vy); });
-    state.hunters.forEach(function(h){ drawMini(h.x,h.y,'#fff',3,h.vx,h.vy); });
-    state.patrols.forEach(function(p){ drawMini(p.x,p.y,'#4f8',3,p.vx,p.vy); });
-    state.haulers.forEach(function(h){ drawMini(h.x,h.y,'#9fc',3,h.vx,h.vy); });
-    state.comets.forEach(function(c){ drawMini(c.x,c.y,'#fff',3,c.vx,c.vy); });
-    state.meteorEvents.forEach(function(ev){ drawMini(ev.x,ev.y,'#fa0',5); });
-    state.gates.forEach(function(g){ drawMini(g.x,g.y,'#9bf',3); });
-    drawMini(state.ship.x,state.ship.y,'#9cf',4,state.ship.vx,state.ship.vy);
+    function drawMini(x,y,color,r,shape,vx,vy,angle){
+      var dx=(x-viewX)*sx+half; var dy=(y-viewY)*sy+half; var rr=r*sx;
+      if(dx<-rr-4||dx>MINI_SIZE+rr+4||dy<-rr-4||dy>MINI_SIZE+rr+4) return;
+      mctx.fillStyle=color;
+      if(shape==='triangle'){
+        mctx.save(); mctx.translate(dx,dy); if(angle) mctx.rotate(angle);
+        mctx.beginPath(); mctx.moveTo(rr,0); mctx.lineTo(-rr,rr*0.6); mctx.lineTo(-rr,-rr*0.6); mctx.closePath();
+        mctx.fill(); mctx.restore();
+      } else {
+        mctx.beginPath(); mctx.arc(dx,dy,rr,0,Math.PI*2); mctx.fill();
+      }
+      if(vx||vy){ mctx.strokeStyle=color; mctx.beginPath(); mctx.moveTo(dx,dy); mctx.lineTo(dx+vx*sx*20, dy+vy*sy*20); mctx.stroke(); }
+    }
+    function drawMiniPlayer(){ drawMini(state.ship.x,state.ship.y,'#9cf',state.ship.r,'triangle',state.ship.vx,state.ship.vy,state.ship.a); }
+    state.planets.forEach(function(p){ if(state.discovered.has(p.id)) drawMini(p.x,p.y,'#8be',p.r,'circle'); });
+    state.blackholes.forEach(function(h){ drawMini(h.x,h.y,'#000',h.r,'circle'); });
+    state.rifts.forEach(function(r){ drawMini(r.x,r.y,'#88f',r.r,'circle',r.vx,r.vy); });
+    state.stars.forEach(function(st){ drawMini(st.x,st.y,'#ffd56b',st.r,'circle'); });
+    state.asteroids.forEach(function(a){ drawMini(a.x,a.y,'#ccd',a.r,'circle',a.vx,a.vy); });
+    state.bases.forEach(function(b){ drawMini(b.x,b.y,'#f44',b.r,'circle'); });
+    state.pirates.forEach(function(p){ drawMini(p.x,p.y,'#f88',p.r,'circle',p.vx,p.vy); });
+    state.hunters.forEach(function(h){ drawMini(h.x,h.y,'#fff',h.r,'circle',h.vx,h.vy); });
+    state.patrols.forEach(function(p){ drawMini(p.x,p.y,'#4f8',p.r,'circle',p.vx,p.vy); });
+    state.haulers.forEach(function(h){ drawMini(h.x,h.y,'#9fc',h.r,'circle',h.vx,h.vy); });
+    state.comets.forEach(function(c){ drawMini(c.x,c.y,'#fff',c.r,'circle',c.vx,c.vy); });
+    state.meteorEvents.forEach(function(ev){ drawMini(ev.x,ev.y,'#fa0',5,'circle'); });
+    state.gates.forEach(function(g){ drawMini(g.x,g.y,'#9bf',g.r,'circle'); });
+    drawMiniPlayer();
     mctx.strokeStyle='rgba(255,255,255,.15)'; mctx.beginPath(); mctx.arc(half,half,half-1,0,Math.PI*2); mctx.stroke();
   }
 
