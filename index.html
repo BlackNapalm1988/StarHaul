@@ -110,6 +110,7 @@
         <div><span class="swatch" style="background:#8be"></span> Planet</div>
         <div><span class="swatch" style="background:#000"></span> Black Hole</div>
         <div><span class="swatch" style="background:#88f"></span> Rift</div>
+        <div><span class="swatch" style="background:#44a"></span> Gravity Well</div>
         <div><span class="swatch" style="background:#ffd56b"></span> Star</div>
         <div><span class="swatch" style="background:#f44"></span> Pirate Base</div>
         <div><span class="swatch" style="background:#9bf"></span> Gate</div>
@@ -305,8 +306,9 @@ document.addEventListener('DOMContentLoaded', function(){
     supernova:{minLife:4800,maxLife:9600,warnWindow:900,yield:[16,32],kick:[1.4,2.8],shockParticles:80},
     hazards:{nebulae:6},
     mines:{radius:34,damage:40,count:12},
-    radiation:{count:3,damage:1},
+    radiation:{count:3,damage:1,fuelDrain:0.04},
     rifts:{count:2,pull:0.15,drift:0.3},
+    gravityWells:{count:4,pull:0.12,drift:0.06},
     pirateBase:{count:1,r:40,hp:60,spawnEvery:400,bounty:200,fireEvery:180},
     hunters:{thresholds:[5,10],speed:3,bulletSpeed:8.5,fireEvery:100},
     patrols:{count:2,scanRadius:260,cone:0.8,fine:100},
@@ -316,6 +318,8 @@ document.addEventListener('DOMContentLoaded', function(){
     solarFlare:{min:800,max:1600,damage:15,stun:90,radius:260},
     nebulaStar:{blue:0.00005,purple:0.00008,green:0.00003},
     background:{galaxies:6, superflash:0.00002},
+    star:{gravFactor:0.35,maxPull:0.25,fuelDrain:0.12,radiation:0.06},
+    planet:{gravFactor:0.08,maxPull:0.12,sizeMult:2.5},
     ui:{starWarnRadius:900}
   };
 
@@ -361,19 +365,37 @@ document.addEventListener('DOMContentLoaded', function(){
     return {x:x,y:y,r:r,vx:Math.cos(va)*vel,vy:Math.sin(va)*vel,a:rand(0,Math.PI*2),spin:rand(-.008,.008),offs:offs,layer:layer,tex:tex};
   }
   function makeMine(x,y){ return {x:x,y:y,r:CFG.mines.radius,blink:0}; }
-  function makeRadiation(){ return {x:rand(200,WORLD.w-200),y:rand(200,WORLD.h-200),r:rand(80,140)}; }
+  function makeRadiation(x,y,r,h){ var cloud=makeNebula(x,y,r||rand(160,260),h||120); cloud.stage='radiation'; cloud.starProb=0; cloud.alpha=0.45; return cloud; }
   function makeRift(){ return {x:rand(200,WORLD.w-200),y:rand(200,WORLD.h-200),r:22,vx:rand(-CFG.rifts.drift,CFG.rifts.drift),vy:rand(-CFG.rifts.drift,CFG.rifts.drift)}; }
+  function makeGravityWell(){ return {x:rand(200,WORLD.w-200),y:rand(200,WORLD.h-200),r:40,vx:rand(-CFG.gravityWells.drift,CFG.gravityWells.drift),vy:rand(-CFG.gravityWells.drift,CFG.gravityWells.drift)}; }
   function makePirateBase(){ return {x:rand(200,WORLD.w-200),y:rand(200,WORLD.h-200),r:CFG.pirateBase.r,hp:CFG.pirateBase.hp,spawn:CFG.pirateBase.spawnEvery,cool:CFG.pirateBase.fireEvery}; }
   function makeHunter(){ var side=irand(0,4); var m=80; var pos=[{x:-m,y:rand(0,WORLD.h)},{x:WORLD.w+m,y:rand(0,WORLD.h)},{x:rand(0,WORLD.w),y:-m},{x:rand(0,WORLD.w),y:WORLD.h+m}][side]; return {x:pos.x,y:pos.y,r:16,vx:0,vy:0,cool:CFG.hunters.fireEvery}; }
   function makePatrol(){ var side=irand(0,4); var m=80; var pos=[{x:-m,y:rand(0,WORLD.h)},{x:WORLD.w+m,y:rand(0,WORLD.h)},{x:rand(0,WORLD.w),y:-m},{x:rand(0,WORLD.w),y:WORLD.h+m}][side]; var ang=rand(0,Math.PI*2); var speed=1.6; return {x:pos.x,y:pos.y,vx:Math.cos(ang)*speed,vy:Math.sin(ang)*speed,a:ang,scan:120,r:14}; }
   function startMeteorEvent(){ return {x:rand(200,WORLD.w-200),y:rand(200,WORLD.h-200),angle:rand(0,Math.PI*2),t:irand(CFG.meteors.duration[0],CFG.meteors.duration[1]),spawn:0}; }
   function splitAst(a){ var res=[]; if(a.r>CFG.asteroid.sizes[2]+1){ var next=a.r===CFG.asteroid.sizes[0]?CFG.asteroid.sizes[1]:CFG.asteroid.sizes[2]; for(var i=0;i<2;i++){ var p=makeAsteroid(a.x+rand(-8,8),a.y+rand(-8,8),next); p.vx+=a.vx*.25; p.vy+=a.vy*.25; res.push(p); } } return res; }
-  function makePlanet(i){ var types=["rocky","ocean","ice","lava","gas","industrial"]; var type=types[i % types.length]; var r=irand(28,80); var x,y,tries=0; do{ x=rand(200,WORLD.w-200); y=rand(200,WORLD.h-200); tries++; } while((Math.hypot(x-WORLD.w/2,y-WORLD.h/2)<360 || !farFromAll(x,y,state.blackholes,state.planets)) && tries<200); var names=["Eden","Kovax","Aria","Tarsis","Veld","Khepri","Nysa","Osiris","Ixia","Carina","Prax","Rhea"]; var p={ id:i,x:x,y:y,r:r,type:type,rot:rand(0,Math.PI*2),rotSpeed:rand(-0.0012,0.0012), hasRings:(Math.random()<0.25)&&r>40, name:names[i%names.length]+"-"+(100+i), stock:{fuel:irand(200,600),ammo:irand(50,150)}, prices:{fuel:2+rand(-.3,.4),ammo:5+rand(-1,1),repair:20}, offers:[], layer:PLANET_LAYER }; var tex=bakePlanetTexture(p); p.tex=tex.planet; p.ringsTex=tex.rings; return p; }
-  function makeBlackHole(){ return {x:rand(180,WORLD.w-180),y:rand(180,WORLD.h-180),r:32}; }
+  function makePlanet(i){
+    var types=["rocky","ocean","ice","lava","gas","industrial"];
+    var type=types[i % types.length];
+    var baseR=irand(28,80);
+    var r=Math.floor(baseR*CFG.planet.sizeMult);
+    var density=rand(0.7,1.3);
+    var x,y,tries=0;
+    do{ x=rand(200,WORLD.w-200); y=rand(200,WORLD.h-200); tries++; }
+    while((Math.hypot(x-WORLD.w/2,y-WORLD.h/2)<360 || !farFromAll(x,y,state.blackholes,state.planets)) && tries<200);
+    var names=["Eden","Kovax","Aria","Tarsis","Veld","Khepri","Nysa","Osiris","Ixia","Carina","Prax","Rhea"];
+    var p={ id:i,x:x,y:y,r:r,type:type,density:density,rot:rand(0,Math.PI*2),rotSpeed:rand(-0.0012,0.0012), hasRings:(Math.random()<0.25)&&r>100,
+      name:names[i%names.length]+"-"+(100+i), stock:{fuel:irand(200,600),ammo:irand(50,150)}, prices:{fuel:2+rand(-.3,.4),ammo:5+rand(-1,1),repair:20}, offers:[], layer:PLANET_LAYER };
+    var tex=bakePlanetTexture(p); p.tex=tex.planet; p.ringsTex=tex.rings; return p;
+  }
+  function makeBlackHole(){ return {x:rand(180,WORLD.w-180),y:rand(180,WORLD.h-180),r:80}; }
   function makeStar(x,y){
-    var r=irand(36,88);
+    var r=irand(36,88)*3.5;
+    var margin=r+112;
     if(x==null || y==null){
-      do{ x=rand(200,WORLD.w-200); y=rand(200,WORLD.h-200);} while(!farFromAll(x,y,state.blackholes,state.planets) || !farFromStars(x,y,state.stars));
+      do{ x=rand(margin,WORLD.w-margin); y=rand(margin,WORLD.h-margin);} while(!farFromAll(x,y,state.blackholes,state.planets) || !farFromStars(x,y,state.stars));
+    } else {
+      x=clamp(x, margin, WORLD.w-margin);
+      y=clamp(y, margin, WORLD.h-margin);
     }
     var life=irand(CFG.supernova.minLife, CFG.supernova.maxLife);
     var tex=bakePlanetTexture({r:r,type:'star'}).planet;
@@ -393,8 +415,33 @@ document.addEventListener('DOMContentLoaded', function(){
     var tex=bakePlanetTexture({r:8,type:'ice'}).planet;
     return {x:x,y:y,vx:vx,vy:vy,r:8,a:rand(0,Math.PI*2),spin:rand(-0.02,0.02),offs:offs,life:irand(600,1200),trail:[],layer:Math.random(),tex:tex};
   }
-  function makeNebula(x,y){ var r=irand(260,420); if(x==null || y==null){ x=rand(120,WORLD.w-120); y=rand(120,WORLD.h-120); } var c=document.createElement('canvas'); var dim=Math.ceil(r*2.6); c.width=c.height=dim; var g=c.getContext('2d'); g.translate(dim/2,dim/2); var palettes=[{range:[210,250],name:'blue',prob:CFG.nebulaStar.blue},{range:[270,310],name:'purple',prob:CFG.nebulaStar.purple},{range:[180,220],name:'green',prob:CFG.nebulaStar.green}]; var pal=palettes[irand(0,palettes.length)]; var density=rand(0.4,1); for(var i=0;i<irand(28,44);i++){ var a=rand(0,Math.PI*2), rr=rand(0,r*0.9); var xx=Math.cos(a)*rr, yy=Math.sin(a)*rr; var rad=rand(r*0.15,r*0.38); var hue=irand(pal.range[0],pal.range[1]); var grad=g.createRadialGradient(xx,yy,rad*0.2,xx,yy,rad); grad.addColorStop(0,'hsla('+hue+',70%,65%,.22)'); grad.addColorStop(1,'hsla('+hue+',70%,50%,0)'); g.fillStyle=grad; g.beginPath(); g.arc(xx,yy,rad,0,Math.PI*2); g.fill(); }
-    return {x:x,y:y,r:r,tex:c,color:pal.name,density:density,starProb:pal.prob*density,age:0,birthTime:irand(4800,9600),layer:Math.random(),alpha:0.2,vx:rand(-0.05,0.05),vy:rand(-0.05,0.05),stage:'nebula'}; }
+  function makeNebula(x,y,r,hue){
+    r=r||irand(600,900);
+    if(x==null || y==null){
+      var margin=120, nx,ny,tries=0;
+      do{
+        nx=rand(margin,WORLD.w-margin);
+        ny=rand(margin,WORLD.h-margin);
+        tries++;
+      } while((state && (!farFromAll(nx,ny,state.blackholes,state.planets) || !farFromStars(nx,ny,state.stars))) && tries<200);
+      x=nx; y=ny;
+    }
+    var c=document.createElement('canvas'); var dim=Math.ceil(r*2.6); c.width=c.height=dim; var g=c.getContext('2d'); g.translate(dim/2,dim/2);
+    var density=rand(0.4,1);
+    var baseHue, colorName, starProb;
+    if(hue==null){
+      var palettes=[{range:[210,250],name:'blue',prob:CFG.nebulaStar.blue},{range:[270,310],name:'purple',prob:CFG.nebulaStar.purple},{range:[180,220],name:'green',prob:CFG.nebulaStar.green}];
+      var pal=palettes[irand(0,palettes.length)];
+      baseHue=irand(pal.range[0],pal.range[1]);
+      colorName=pal.name;
+      starProb=pal.prob*density;
+    } else {
+      baseHue=hue;
+      colorName='mixed';
+      starProb=CFG.nebulaStar.green*density;
+    }
+    for(var i=0;i<irand(60,90);i++){ var a=rand(0,Math.PI*2), rr=rand(0,r*0.9); var xx=Math.cos(a)*rr, yy=Math.sin(a)*rr; var rad=rand(r*0.15,r*0.38); var hueVal=irand(baseHue-20,baseHue+20); var grad=g.createRadialGradient(xx,yy,rad*0.2,xx,yy,rad); grad.addColorStop(0,'hsla('+hueVal+',70%,65%,.35)'); grad.addColorStop(1,'hsla('+hueVal+',70%,50%,0)'); g.fillStyle=grad; g.beginPath(); g.arc(xx,yy,rad,0,Math.PI*2); g.fill(); }
+    return {x:x,y:y,r:r,baseR:r,tex:c,color:colorName,hue:baseHue,density:density,starProb:starProb,age:0,birthTime:irand(4800,9600),layer:Math.random(),alpha:0.3,vx:rand(-0.05,0.05),vy:rand(-0.05,0.05),stage:'nebula'}; }
   function makeGalaxy(){ var r=irand(12,24); var c=document.createElement('canvas'); c.width=c.height=r*4; var g=c.getContext('2d'); g.translate(c.width/2,c.height/2); var arms=irand(3,5); for(var a=0;a<arms;a++){ g.save(); g.rotate((Math.PI*2)*(a/arms)); var grad=g.createLinearGradient(0,0,r*2,0); grad.addColorStop(0,'rgba(255,255,255,0.8)'); grad.addColorStop(1,'rgba(255,255,255,0)'); g.strokeStyle=grad; g.lineWidth=2; g.beginPath(); g.moveTo(0,0); g.lineTo(r*2,0); g.stroke(); g.restore(); } g.fillStyle='rgba(255,255,255,0.8)'; g.beginPath(); g.arc(0,0,r*0.6,0,Math.PI*2); g.fill(); return {x:rand(0,WORLD.w),y:rand(0,WORLD.h),tex:c}; }
 
   function farFromAll(x,y,blackholes,planets){ if(blackholes){ for(var i=0;i<blackholes.length;i++){ var h=blackholes[i]; if(Math.hypot(x-h.x,y-h.y) < h.r + CFG.safety.fromBH) return false; } } if(planets){ for(var j=0;j<planets.length;j++){ var p=planets[j]; if(Math.hypot(x-p.x,y-p.y) < p.r + CFG.safety.fromPlanet) return false; } } if(state && state.stars){ for(var k=0;k<state.stars.length;k++){ var s=state.stars[k]; if(Math.hypot(x-s.x,y-s.y) < s.r + CFG.safety.fromStar) return false; } } return true; }
@@ -408,18 +455,20 @@ document.addEventListener('DOMContentLoaded', function(){
       gates:[], fow:new Set(), docked:null, stars:[], towed:false, nebulae:[], discovered:new Set(), home:null,
       comets:[], cometTimer:irand(CFG.comets.spawnEvery[0],CFG.comets.spawnEvery[1]), galaxies:[], flashes:[], haulers:[],
       mines:[], radiations:[], inRadiation:false,
-      rifts:[], bases:[], hunters:[], patrols:[], meteorEvents:[], nextMeteor:irand(CFG.meteors.spawnEvery[0],CFG.meteors.spawnEvery[1]), hunterLevel:0 };
+      rifts:[], gravityWells:[], bases:[], hunters:[], patrols:[], meteorEvents:[], nextMeteor:irand(CFG.meteors.spawnEvery[0],CFG.meteors.spawnEvery[1]), hunterLevel:0 };
     for(var i=0;i<CFG.planets;i++) state.planets.push(makePlanet(i));
     for(var j=0;j<CFG.blackholes;j++){ var bh; var tries=0; do{ bh=makeBlackHole(); tries++; } while(!farFromAll(bh.x,bh.y,state.blackholes,state.planets) && tries<200); state.blackholes.push(bh); }
     for(var s=0;s<CFG.stars;s++){ state.stars.push(makeStar()); }
     for(var n=0;n<CFG.hazards.nebulae;n++){ state.nebulae.push(makeNebula()); }
     for(var gg=0; gg<CFG.background.galaxies; gg++){ state.galaxies.push(makeGalaxy()); }
     for(var k=0;k<CFG.asteroid.count;k++){ var ax,ay; do{ ax=rand(0,WORLD.w); ay=rand(0,WORLD.h);} while(!farFromAll(ax,ay,state.blackholes,state.planets) ); state.asteroids.push(makeAsteroid(ax,ay,CFG.asteroid.sizes[0])); }
+    state.planets.forEach(function(pl){ var orbit=irand(3,6); for(var o=0;o<orbit;o++){ var ang=rand(0,Math.PI*2); var dist=rand(pl.r+40, pl.r+120); var size=pick(CFG.asteroid.sizes); var ax=pl.x+Math.cos(ang)*dist; var ay=pl.y+Math.sin(ang)*dist; var a=makeAsteroid(ax, ay, size); var sp=rand(0.4,1.2); a.vx=-Math.sin(ang)*sp; a.vy=Math.cos(ang)*sp; state.asteroids.push(a); } });
     for(var g=0;g<CFG.gates;g++) state.gates.push(makeGate(g));
     for(var p=0;p<3;p++) state.pirates.push(makePirate());
     for(var m=0;m<CFG.mines.count;m++){ state.mines.push(makeMine(rand(0,WORLD.w),rand(0,WORLD.h))); }
     for(var r=0;r<CFG.radiation.count;r++){ state.radiations.push(makeRadiation()); }
     for(var rf=0; rf<CFG.rifts.count; rf++){ state.rifts.push(makeRift()); }
+    for(var gw=0; gw<CFG.gravityWells.count; gw++){ state.gravityWells.push(makeGravityWell()); }
     for(var pb=0; pb<CFG.pirateBase.count; pb++){ state.bases.push(makePirateBase()); }
     for(var pt=0; pt<CFG.patrols.count; pt++){ state.patrols.push(makePatrol()); }
     refreshOffers(true);
@@ -602,7 +651,40 @@ document.addEventListener('DOMContentLoaded', function(){
 
     // radiation zones
     state.inRadiation=false;
-    for(var ri=0; ri<state.radiations.length; ri++){ var rz=state.radiations[ri]; if(Math.hypot(s.x-rz.x,s.y-rz.y)<rz.r){ state.inRadiation=true; if(!DEBUG_MODE && s.shield<2 && s.inv<=0){ s.hull-=CFG.radiation.damage*dt; if(s.hull<=0){ s.hull=0; killShip(); } updateHUD(); } } }
+    for(var ri=state.radiations.length-1; ri>=0; ri--){
+      var rz=state.radiations[ri];
+      if(Math.hypot(s.x-rz.x,s.y-rz.y)<rz.r){
+        state.inRadiation=true;
+        if(!DEBUG_MODE){
+          state.fuel=Math.max(0,state.fuel-CFG.radiation.fuelDrain*dt);
+          if(s.shield<2 && s.inv<=0){
+            s.hull-=CFG.radiation.damage*dt;
+            if(s.hull<=0){ s.hull=0; killShip(); }
+          }
+          updateHUD();
+        }
+      }
+      rz.x+=rz.vx*dt; rz.y+=rz.vy*dt; wrapEntity(rz);
+      for(var rj=ri-1; rj>=0; rj--){
+        var other=state.radiations[rj];
+        if(Math.hypot(rz.x-other.x,rz.y-other.y)<rz.r+other.r){
+          var h=(rz.hue+other.hue)/2; var nr=Math.sqrt(rz.r*rz.r+other.r*other.r);
+          var merged=makeRadiation((rz.x+other.x)/2,(rz.y+other.y)/2,nr,h);
+          merged.vx=(rz.vx+other.vx)/2; merged.vy=(rz.vy+other.vy)/2; merged.layer=(rz.layer+other.layer)/2;
+          state.radiations[rj]=merged; state.radiations.splice(ri,1); rz=null; break;
+        }
+      }
+      if(!rz) continue;
+      for(var ni=state.nebulae.length-1; ni>=0; ni--){
+        var nb=state.nebulae[ni];
+        if(Math.hypot(rz.x-nb.x,rz.y-nb.y)<rz.r+nb.r){
+          var mh=(nb.hue+rz.hue)/2; var mr=Math.sqrt(nb.r*nb.r+rz.r*rz.r);
+          var mergedNeb=makeNebula(nb.x,nb.y,mr,mh);
+          mergedNeb.vx=(nb.vx+rz.vx)/2; mergedNeb.vy=(nb.vy+rz.vy)/2; mergedNeb.layer=Math.max(nb.layer,rz.layer);
+          state.nebulae[ni]=mergedNeb; state.radiations.splice(ri,1); break;
+        }
+      }
+    }
 
     state.cometTimer-=1*dt;
     if(state.cometTimer<=0){ state.comets.push(makeComet()); state.cometTimer=irand(CFG.comets.spawnEvery[0],CFG.comets.spawnEvery[1]); }
@@ -632,6 +714,15 @@ document.addEventListener('DOMContentLoaded', function(){
       }
       // destroyed by stars
       for(var si=0; si<state.stars.length; si++){ var st=state.stars[si]; if(Math.hypot(a.x-st.x,a.y-st.y) < a.r + st.r){ state.asteroids.splice(i,1); explode(a.x,a.y,10); break; } }
+    }
+
+    if(Math.random()<0.0015*dt){
+      var side=irand(0,4), x,y,vx,vy; var sp=rand(CFG.asteroid.speed[0],CFG.asteroid.speed[1]);
+      if(side===0){ x=-40; y=rand(0,WORLD.h); vx=sp; vy=rand(-1,1); }
+      else if(side===1){ x=WORLD.w+40; y=rand(0,WORLD.h); vx=-sp; vy=rand(-1,1); }
+      else if(side===2){ x=rand(0,WORLD.w); y=-40; vx=rand(-1,1); vy=sp; }
+      else { x=rand(0,WORLD.w); y=WORLD.h+40; vx=rand(-1,1); vy=-sp; }
+      var sz=pick(CFG.asteroid.sizes); var na=makeAsteroid(x,y,sz); na.vx=vx; na.vy=vy; state.asteroids.push(na);
     }
 
     // pirates spawn & steer with avoidance
@@ -676,12 +767,46 @@ document.addEventListener('DOMContentLoaded', function(){
 
     // black hole gravity — affects ship, asteroids, pirates, bullets
     state.blackholes.forEach(function(h){
-      applyGravity(h, 160, 1600, .45, dt, h.r+10);
+      applyGravity(h, 160, 1600, .45, dt, h.r+10, [state.asteroids,state.pirates,state.bullets,state.haulers,state.hunters,state.nebulae,state.radiations,state.comets]);
     });
 
     state.rifts.forEach(function(r){
       r.x+=r.vx*dt; r.y+=r.vy*dt; wrapEntity(r);
       applyGravity(r, 80, 800, CFG.rifts.pull, dt);
+    });
+
+    state.gravityWells.forEach(function(gw){
+      gw.vx+=rand(-CFG.gravityWells.drift,CFG.gravityWells.drift)*0.02*dt;
+      gw.vy+=rand(-CFG.gravityWells.drift,CFG.gravityWells.drift)*0.02*dt;
+      var sp=Math.hypot(gw.vx,gw.vy); if(sp>CFG.gravityWells.drift){ gw.vx=(gw.vx/sp)*CFG.gravityWells.drift; gw.vy=(gw.vy/sp)*CFG.gravityWells.drift; }
+      gw.x+=gw.vx*dt; gw.y+=gw.vy*dt; wrapEntity(gw);
+      applyGravity(gw, 120, 600, CFG.gravityWells.pull, dt, null, [state.asteroids,state.nebulae]);
+    });
+
+    state.planets.forEach(function(pl){
+      var force = pl.r*pl.r*CFG.planet.gravFactor*pl.density;
+      applyGravity(pl, pl.r*1.8, force, CFG.planet.maxPull, dt, pl.r+10, [state.asteroids]);
+    });
+
+    state.stars.forEach(function(st){
+      var force = st.r*st.r*CFG.star.gravFactor;
+      applyGravity(st, st.r*2, force, CFG.star.maxPull, dt);
+      var d=Math.hypot(s.x-st.x,s.y-st.y);
+      if(d<st.r*4){
+        var prox=1-d/(st.r*4);
+        if(!DEBUG_MODE){
+          state.fuel=Math.max(0,state.fuel-CFG.star.fuelDrain*prox*dt);
+          updateHUD();
+        }
+        if(d<st.r*3){
+          state.inRadiation=true;
+          if(!DEBUG_MODE && s.inv<=0){
+            s.hull-=CFG.star.radiation*(1-d/(st.r*3))*dt;
+            if(s.hull<=0){ s.hull=0; killShip(); }
+            updateHUD();
+          }
+        }
+      }
     });
 
     if(s.centered){ s.x=s.centerX; s.y=s.centerY; s.vx=0; s.vy=0; }
@@ -717,7 +842,35 @@ document.addEventListener('DOMContentLoaded', function(){
     if(state.docked) tryDeliver();
     if(!DEBUG_MODE && state.credits<=0 && state.ammo<=0 && state.fuel<=0){ return gameOver(); }
 
-    for(var ni2=state.nebulae.length-1; ni2>=0; ni2--){ var NB=state.nebulae[ni2]; NB.age+=1*dt; NB.x+=NB.vx*dt; NB.y+=NB.vy*dt; wrapEntity(NB); if(NB.stage==='fading'){ NB.alpha=Math.max(0,NB.alpha-0.002*dt); if(NB.alpha<=0){ state.nebulae.splice(ni2,1); } continue; } NB.alpha=0.2+0.6*(NB.age/NB.birthTime); if(NB.age>=NB.birthTime){ var st=makeStar(NB.x, NB.y); st.form=0; state.stars.push(st); NB.stage='fading'; toast('✨ A star is born!'); }}
+    for(var ni2=state.nebulae.length-1; ni2>=0; ni2--){
+      var NB=state.nebulae[ni2];
+      NB.age+=1*dt;
+      NB.x+=NB.vx*dt; NB.y+=NB.vy*dt;
+      wrapEntity(NB);
+      if(NB.stage==='fading'){
+        NB.alpha=Math.max(0,NB.alpha-0.002*dt);
+        if(NB.alpha<=0){ state.nebulae.splice(ni2,1); }
+        continue;
+      }
+      var prog = Math.min(1, NB.age/NB.birthTime);
+      NB.alpha=0.3+0.7*prog;
+      NB.r=NB.baseR*(1-prog);
+      if(NB.age>=NB.birthTime){
+        var sx=NB.x, sy=NB.y, tries=0;
+        while((!farFromAll(sx,sy,state.blackholes,state.planets) || !farFromStars(sx,sy,state.stars)) && tries<40){
+          sx+=rand(-400,400);
+          sy+=rand(-400,400);
+          tries++;
+        }
+        if(farFromAll(sx,sy,state.blackholes,state.planets) && farFromStars(sx,sy,state.stars)){
+          var st=makeStar(sx, sy);
+          st.form=0;
+          state.stars.push(st);
+          toast('✨ A star is born!');
+        }
+        NB.stage='fading';
+      }
+    }
 
     // Star lifecycle with proximity-based warnings
     for(var sidx=state.stars.length-1; sidx>=0; sidx--){ var SS=state.stars[sidx]; SS.life -= 1*dt; SS.flare -= 1*dt; if(SS.form<1) SS.form=Math.min(1,SS.form+0.002*dt); var age=1-SS.life/SS.maxLife; SS.hue=210-age*210; SS.r=SS.baseR*(1+age*0.4)*SS.form; var distToShip=Math.hypot(SS.x-state.ship.x, SS.y-state.ship.y);
@@ -732,7 +885,7 @@ document.addEventListener('DOMContentLoaded', function(){
     state.flashes=state.flashes.filter(function(f){ return f.life>0; });
   }
 
-  function supernova(index){ var st=state.stars[index]; for(var i=0;i<CFG.supernova.shockParticles;i++){ var a=rand(0,Math.PI*2), sp=rand(1.0,3.6); state.particles.push({x:st.x,y:st.y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:rand(22,44),r:rand(1.4,2.6),h:rand(28,58)}); } var count=irand(CFG.supernova.yield[0], CFG.supernova.yield[1]); var baseAngle=rand(0,Math.PI*2); for(var k=0;k<count;k++){ var ang=baseAngle + (k/count)*Math.PI*2 + rand(-0.1,0.1); var off=rand(4, st.r*0.6); var ax=st.x + Math.cos(ang)*off; var ay=st.y + Math.sin(ang)*off; var size=pick(CFG.asteroid.sizes); var a=makeAsteroid(ax, ay, size); var kick=rand(CFG.supernova.kick[0], CFG.supernova.kick[1]); a.vx += Math.cos(ang)*kick; a.vy += Math.sin(ang)*kick; state.asteroids.push(a); } state.nebulae.push(makeNebula(st.x, st.y)); toast('💥 Supernova! New asteroid field detected.'); state.stars.splice(index,1); }
+  function supernova(index){ var st=state.stars[index]; for(var i=0;i<CFG.supernova.shockParticles;i++){ var a=rand(0,Math.PI*2), sp=rand(1.0,3.6); state.particles.push({x:st.x,y:st.y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:rand(22,44),r:rand(1.4,2.6),h:rand(28,58)}); } var baseCount=irand(CFG.supernova.yield[0], CFG.supernova.yield[1]); var count=Math.floor(baseCount*(st.r/100)); var baseAngle=rand(0,Math.PI*2); for(var k=0;k<count;k++){ var ang=baseAngle + (k/count)*Math.PI*2 + rand(-0.1,0.1); var off=rand(4, st.r*0.6); var ax=st.x + Math.cos(ang)*off; var ay=st.y + Math.sin(ang)*off; var size=pick(CFG.asteroid.sizes); var a=makeAsteroid(ax, ay, size); var kick=rand(CFG.supernova.kick[0], CFG.supernova.kick[1]); a.vx += Math.cos(ang)*kick; a.vy += Math.sin(ang)*kick; state.asteroids.push(a); } state.nebulae.push(makeNebula(st.x, st.y)); toast('💥 Supernova! New asteroid field detected.'); state.stars.splice(index,1); }
   function solarFlare(st){ for(var i=0;i<40;i++){ var a=rand(0,Math.PI*2), sp=rand(2,5); state.particles.push({x:st.x,y:st.y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:rand(40,80),r:rand(1,2),h:rand(28,58)}); } var d=Math.hypot(state.ship.x-st.x,state.ship.y-st.y); if(d<CFG.solarFlare.radius && !DEBUG_MODE){ damage(CFG.solarFlare.damage); state.ship.flare=CFG.solarFlare.stun; } toast('☀️ Solar flare!'); }
 
   function draw(){
@@ -749,9 +902,40 @@ document.addEventListener('DOMContentLoaded', function(){
     ctx.save(); ctx.translate(-cam.x, -cam.y);
 
     // back layer objects
-    state.nebulae.filter(function(n){return n.layer<PLANET_LAYER;}).forEach(function(n){ ctx.save(); ctx.globalAlpha=n.alpha; ctx.drawImage(n.tex, n.x - n.tex.width/2, n.y - n.tex.height/2); ctx.restore(); });
+    function drawCloud(n){
+      ctx.save();
+      ctx.globalAlpha=n.alpha;
+      ctx.translate(n.x,n.y);
+      var scale=n.baseR? n.r/n.baseR : 1;
+      ctx.scale(scale,scale);
+      ctx.drawImage(n.tex,-n.tex.width/2,-n.tex.height/2);
+      ctx.restore();
+      if(n.stage==='nebula'){
+        var prog=Math.min(1,n.age/n.birthTime);
+        var core=8+prog*(n.baseR||n.r)*0.3;
+        var grad=ctx.createRadialGradient(n.x,n.y,0,n.x,n.y,core);
+        grad.addColorStop(0,'rgba(255,255,255,'+(0.6+0.4*prog)+')');
+        grad.addColorStop(1,'rgba(255,255,255,0)');
+        ctx.save();
+        ctx.globalCompositeOperation='lighter';
+        ctx.fillStyle=grad;
+        ctx.beginPath(); ctx.arc(n.x,n.y,core,0,Math.PI*2); ctx.fill();
+        ctx.restore();
+      } else if(n.stage==='radiation'){
+        var glow=ctx.createRadialGradient(n.x,n.y,0,n.x,n.y,n.r*0.9);
+        glow.addColorStop(0,'rgba(80,255,80,0.35)');
+        glow.addColorStop(1,'rgba(80,255,80,0)');
+        ctx.save();
+        ctx.globalCompositeOperation='lighter';
+        ctx.fillStyle=glow;
+        ctx.beginPath(); ctx.arc(n.x,n.y,n.r*0.9,0,Math.PI*2); ctx.fill();
+        ctx.restore();
+      }
+    }
+    state.nebulae.filter(function(n){return n.layer<PLANET_LAYER;}).forEach(drawCloud);
     state.asteroids.filter(function(a){return a.layer<PLANET_LAYER;}).forEach(function(a){ ctx.save(); ctx.translate(a.x,a.y); ctx.rotate(a.a); ctx.drawImage(a.tex,-a.tex.width/2,-a.tex.height/2); ctx.restore(); });
     state.comets.filter(function(c){return c.layer<PLANET_LAYER;}).forEach(function(c){ ctx.save(); ctx.translate(c.x,c.y); ctx.rotate(c.a); ctx.beginPath(); for(var i=0;i<c.offs.length;i++){ var ang=(Math.PI*2)*(i/c.offs.length); var rr=c.r*c.offs[i]; var xx=Math.cos(ang)*rr, yy=Math.sin(ang)*rr; if(i===0) ctx.moveTo(xx,yy); else ctx.lineTo(xx,yy);} ctx.closePath(); ctx.clip(); ctx.drawImage(c.tex,-c.tex.width/2,-c.tex.height/2); ctx.restore(); ctx.save(); c.trail.forEach(function(t){ ctx.globalAlpha=t.life/40; ctx.fillStyle='#fff'; ctx.fillRect(t.x-1,t.y-1,2,2); }); ctx.restore(); });
+    state.radiations.filter(function(n){return n.layer<PLANET_LAYER;}).forEach(drawCloud);
 
     // planets (baked textures + rings)
     state.planets.forEach(function(p){
@@ -761,7 +945,28 @@ document.addEventListener('DOMContentLoaded', function(){
     });
 
     // black holes
-    state.blackholes.forEach(function(h){ ctx.save(); ctx.translate(h.x,h.y); var grd=ctx.createRadialGradient(0,0,4,0,0,h.r); grd.addColorStop(0,'#111'); grd.addColorStop(1,'#000'); ctx.fillStyle=grd; ctx.beginPath(); ctx.arc(0,0,h.r,0,Math.PI*2); ctx.fill(); ctx.strokeStyle='rgba(109,184,242,.35)'; ctx.beginPath(); ctx.arc(0,0,h.r+10,0,Math.PI*2); ctx.stroke(); ctx.restore(); });
+    state.blackholes.forEach(function(h){
+      ctx.save(); ctx.translate(h.x,h.y);
+      var grd=ctx.createRadialGradient(0,0,4,0,0,h.r); grd.addColorStop(0,'#111'); grd.addColorStop(1,'#000');
+      ctx.fillStyle=grd; ctx.beginPath(); ctx.arc(0,0,h.r,0,Math.PI*2); ctx.fill();
+      var lens=ctx.createRadialGradient(0,0,h.r,0,0,h.r*1.8);
+      lens.addColorStop(0,'rgba(109,184,242,0.45)');
+      lens.addColorStop(1,'rgba(109,184,242,0)');
+      ctx.globalCompositeOperation='lighter';
+      ctx.beginPath(); ctx.arc(0,0,h.r*1.8,0,Math.PI*2); ctx.fillStyle=lens; ctx.fill();
+      ctx.globalCompositeOperation='source-over';
+      ctx.restore();
+    });
+
+    // gravity wells
+    state.gravityWells.forEach(function(gw){
+      ctx.save(); ctx.translate(gw.x,gw.y);
+      var g=ctx.createRadialGradient(0,0,0,0,0,gw.r);
+      g.addColorStop(0,'rgba(68,170,255,0.3)');
+      g.addColorStop(1,'rgba(68,170,255,0)');
+      ctx.fillStyle=g; ctx.beginPath(); ctx.arc(0,0,gw.r,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+    });
     // gravity rifts
     state.rifts.forEach(function(r){ ctx.save(); ctx.translate(r.x,r.y); ctx.strokeStyle='rgba(150,200,255,0.3)'; ctx.beginPath(); ctx.arc(0,0,r.r+6,0,Math.PI*2); ctx.stroke(); ctx.strokeStyle='rgba(150,200,255,0.15)'; ctx.beginPath(); ctx.arc(0,0,r.r+12,0,Math.PI*2); ctx.stroke(); ctx.restore(); });
 
@@ -769,8 +974,6 @@ document.addEventListener('DOMContentLoaded', function(){
     state.stars.forEach(function(st){ ctx.save(); ctx.translate(st.x, st.y); ctx.drawImage(st.tex,-st.tex.width/2,-st.tex.height/2); var g=ctx.createRadialGradient(0,0,2,0,0,st.r); g.addColorStop(0,'hsl('+st.hue+',80%,90%)'); g.addColorStop(0.4,'hsl('+st.hue+',80%,60%)'); g.addColorStop(1,'hsla('+st.hue+',80%,40%,0.2)'); ctx.globalCompositeOperation='lighter'; ctx.fillStyle=g; ctx.beginPath(); ctx.arc(0,0,st.r,0,Math.PI*2); ctx.fill(); ctx.globalCompositeOperation='source-over'; if(st.phase==='unstable'){ var pulse=(Math.sin(st.pulse)+1)*0.5; ctx.globalAlpha = 0.35 + 0.35*pulse; ctx.strokeStyle='rgba(255,220,120,0.8)'; ctx.lineWidth=2 + 3*pulse; ctx.beginPath(); ctx.arc(0,0, st.r + 10 + 6*pulse, 0, Math.PI*2); ctx.stroke(); ctx.globalAlpha=1; } ctx.restore(); });
     state.gates.forEach(function(g){ ctx.save(); ctx.strokeStyle='#9bf'; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(g.x,g.y,g.r,0,Math.PI*2); ctx.stroke(); ctx.restore(); });
 
-    // radiation zones
-    state.radiations.forEach(function(r){ ctx.save(); ctx.strokeStyle='rgba(0,255,0,0.25)'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(r.x,r.y,r.r,0,Math.PI*2); ctx.stroke(); ctx.restore(); });
     // meteor event markers
     state.meteorEvents.forEach(function(ev){ ctx.save(); ctx.strokeStyle='rgba(255,200,0,0.25)'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(ev.x,ev.y,240,0,Math.PI*2); ctx.stroke(); ctx.restore(); });
     // mines
@@ -780,9 +983,10 @@ document.addEventListener('DOMContentLoaded', function(){
     state.particles.forEach(function(p){ ctx.globalAlpha=clamp(p.life/36,0,1); ctx.fillStyle='hsl('+p.h+',70%,70%)'; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();}); ctx.globalAlpha=1;
 
     // front layer objects
-    state.nebulae.filter(function(n){return n.layer>=PLANET_LAYER;}).forEach(function(n){ ctx.save(); ctx.globalAlpha=n.alpha; ctx.drawImage(n.tex, n.x - n.tex.width/2, n.y - n.tex.height/2); ctx.restore(); });
+    state.nebulae.filter(function(n){return n.layer>=PLANET_LAYER;}).forEach(drawCloud);
     state.asteroids.filter(function(a){return a.layer>=PLANET_LAYER;}).forEach(function(a){ ctx.save(); ctx.translate(a.x,a.y); ctx.rotate(a.a); ctx.drawImage(a.tex,-a.tex.width/2,-a.tex.height/2); ctx.restore(); });
     state.comets.filter(function(c){return c.layer>=PLANET_LAYER;}).forEach(function(c){ ctx.save(); ctx.translate(c.x,c.y); ctx.rotate(c.a); ctx.beginPath(); for(var i=0;i<c.offs.length;i++){ var ang=(Math.PI*2)*(i/c.offs.length); var rr=c.r*c.offs[i]; var xx=Math.cos(ang)*rr, yy=Math.sin(ang)*rr; if(i===0) ctx.moveTo(xx,yy); else ctx.lineTo(xx,yy);} ctx.closePath(); ctx.clip(); ctx.drawImage(c.tex,-c.tex.width/2,-c.tex.height/2); ctx.restore(); ctx.save(); c.trail.forEach(function(t){ ctx.globalAlpha=t.life/40; ctx.fillStyle='#fff'; ctx.fillRect(t.x-1,t.y-1,2,2); }); ctx.restore(); });
+    state.radiations.filter(function(n){return n.layer>=PLANET_LAYER;}).forEach(drawCloud);
 
     // haulers
     state.haulers.forEach(function(h){ ctx.save(); ctx.translate(h.x,h.y); ctx.rotate(Math.atan2(h.vy,h.vx||1)); ctx.strokeStyle='#9fc'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(h.r,0); ctx.lineTo(-h.r*.6,-h.r*.6); ctx.lineTo(-h.r*.3,0); ctx.lineTo(-h.r*.6,h.r*.6); ctx.closePath(); ctx.stroke(); ctx.restore(); });
@@ -803,7 +1007,7 @@ document.addEventListener('DOMContentLoaded', function(){
     state.bullets.forEach(function(b){ ctx.fillStyle=b.enemy?'#ffb0b0':'#ffffff'; ctx.shadowBlur=6; ctx.shadowColor=b.enemy?'#ff8a8a':'#6df2d6'; ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0; });
 
     // ship
-    var s=state.ship; var flicker=s.inv>0 && s.blink>CFG.ship.blink/2 && !s.justSpawned; if(!(flicker && Math.floor(s.inv)%2===0)){
+    var s=state.ship; var flicker=s.inv>0 && s.blink>CFG.ship.blink/2 && !s.justSpawned; if(!state.inNebula && !state.inRadiation && !(flicker && Math.floor(s.inv)%2===0)){
       s.trail.forEach(function(t){ var alpha=clamp(t.life/22,0,1); ctx.fillStyle='rgba(109,242,214,'+(alpha*.35)+')'; ctx.beginPath(); ctx.arc(t.x,t.y,3*(alpha+.2),0,Math.PI*2); ctx.fill(); });
       ctx.save(); ctx.translate(s.x,s.y); ctx.rotate(s.a); var body=ctx.createLinearGradient(-s.r,s.r,s.r,-s.r); body.addColorStop(0,'#2a3448'); body.addColorStop(1,'#3b4a66'); ctx.fillStyle=body; ctx.strokeStyle='#9cebdc'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(s.r,0); ctx.lineTo(-s.r*.7,-s.r*.65); ctx.lineTo(-s.r,0); ctx.lineTo(-s.r*.7,s.r*.65); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.rect(-s.r*.95,-6, -11,12); ctx.stroke(); ctx.restore();
     }
@@ -839,6 +1043,7 @@ document.addEventListener('DOMContentLoaded', function(){
     state.planets.forEach(function(p){ if(state.discovered.has(p.id)) drawMini(p.x,p.y,'#8be',p.r,'circle'); });
     state.blackholes.forEach(function(h){ drawMini(h.x,h.y,'#000',h.r,'circle'); });
     state.rifts.forEach(function(r){ drawMini(r.x,r.y,'#88f',r.r,'circle',r.vx,r.vy); });
+    state.gravityWells.forEach(function(gw){ drawMini(gw.x,gw.y,'#44a',gw.r,'circle',gw.vx,gw.vy); });
     state.stars.forEach(function(st){ drawMini(st.x,st.y,'#ffd56b',st.r,'circle'); });
     state.asteroids.forEach(function(a){ drawMini(a.x,a.y,'#ccd',a.r,'circle',a.vx,a.vy); });
     state.bases.forEach(function(b){ drawMini(b.x,b.y,'#f44',b.r,'circle'); });
@@ -894,6 +1099,7 @@ document.addEventListener('DOMContentLoaded', function(){
     state.planets.forEach(function(p){ if(state.discovered.has(p.id)) drawBig(p.x,p.y,'#8be',p.r*sx); });
     state.blackholes.forEach(function(h){ drawBig(h.x,h.y,'#000',h.r*sx); });
     state.rifts.forEach(function(r){ drawBig(r.x,r.y,'#88f',r.r*sx); });
+    state.gravityWells.forEach(function(gw){ drawBig(gw.x,gw.y,'#44a',gw.r*sx); });
     state.stars.forEach(function(st){ drawBig(st.x,st.y,'#ffd56b',st.r*sx); });
     state.asteroids.forEach(function(a){ drawBig(a.x,a.y,'#ccd',a.r*sx); });
     state.bases.forEach(function(b){ drawBig(b.x,b.y,'#f44',b.r*sx); });
@@ -936,19 +1142,23 @@ document.addEventListener('DOMContentLoaded', function(){
 
   function wrapEntity(e){ if(e.x<0) e.x+=WORLD.w; if(e.x>WORLD.w) e.x-=WORLD.w; if(e.y<0) e.y+=WORLD.h; if(e.y>WORLD.h) e.y-=WORLD.h; }
 
-  function applyGravity(src, soft, force, maxPull, dt, destroyRadius){
+  function applyGravity(src, soft, force, maxPull, dt, destroyRadius, groups){
     pull(src, state.ship);
-    var groups=[state.asteroids,state.pirates,state.bullets,state.haulers,state.hunters];
-    for(var gi=0;gi<groups.length;gi++){
-      var g=groups[gi];
-      for(var i=0;i<g.length;i++){ pull(src, g[i]); }
+    var list=groups || [state.asteroids,state.pirates,state.bullets,state.haulers,state.hunters];
+    for(var gi=0;gi<list.length;gi++){
+      var g=list[gi];
+      for(var i=g.length-1;i>=0;i--){
+        var e=g[i];
+        if(pull(src, e) && destroyRadius && Math.hypot(src.x-e.x,src.y-e.y)<destroyRadius){ g.splice(i,1); }
+      }
     }
     function pull(src, e){
       var dx=src.x-e.x, dy=src.y-e.y; var d=Math.hypot(dx,dy);
-      if(d<1) return;
+      if(d<1) return false;
       var pull=Math.min(force/((d+soft)*(d+soft)), maxPull);
       e.vx+=(dx/d)*pull*dt; e.vy+=(dy/d)*pull*dt;
-      if(destroyRadius && d<destroyRadius && e!==state.ship && e.r){ explode(e.x,e.y,10); }
+      if(destroyRadius && d<destroyRadius && e!==state.ship && e.r){ explode(e.x,e.y,10); return true; }
+      return false;
     }
   }
 
