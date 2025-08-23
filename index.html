@@ -398,8 +398,8 @@ document.addEventListener('DOMContentLoaded', function(){
     var tex=bakePlanetTexture({r:8,type:'ice'}).planet;
     return {x:x,y:y,vx:vx,vy:vy,r:8,a:rand(0,Math.PI*2),spin:rand(-0.02,0.02),offs:offs,life:irand(600,1200),trail:[],layer:Math.random(),tex:tex};
   }
-  function makeNebula(x,y){ var r=irand(260,420); if(x==null || y==null){ x=rand(120,WORLD.w-120); y=rand(120,WORLD.h-120); } var c=document.createElement('canvas'); var dim=Math.ceil(r*2.6); c.width=c.height=dim; var g=c.getContext('2d'); g.translate(dim/2,dim/2); var palettes=[{range:[210,250],name:'blue',prob:CFG.nebulaStar.blue},{range:[270,310],name:'purple',prob:CFG.nebulaStar.purple},{range:[180,220],name:'green',prob:CFG.nebulaStar.green}]; var pal=palettes[irand(0,palettes.length)]; var density=rand(0.4,1); for(var i=0;i<irand(28,44);i++){ var a=rand(0,Math.PI*2), rr=rand(0,r*0.9); var xx=Math.cos(a)*rr, yy=Math.sin(a)*rr; var rad=rand(r*0.15,r*0.38); var hue=irand(pal.range[0],pal.range[1]); var grad=g.createRadialGradient(xx,yy,rad*0.2,xx,yy,rad); grad.addColorStop(0,'hsla('+hue+',70%,65%,.22)'); grad.addColorStop(1,'hsla('+hue+',70%,50%,0)'); g.fillStyle=grad; g.beginPath(); g.arc(xx,yy,rad,0,Math.PI*2); g.fill(); }
-    return {x:x,y:y,r:r,tex:c,color:pal.name,density:density,starProb:pal.prob*density,age:0,birthTime:irand(4800,9600),layer:Math.random(),alpha:0.2,vx:rand(-0.05,0.05),vy:rand(-0.05,0.05),stage:'nebula'}; }
+  function makeNebula(x,y){ var r=irand(600,900); if(x==null || y==null){ x=rand(120,WORLD.w-120); y=rand(120,WORLD.h-120); } var c=document.createElement('canvas'); var dim=Math.ceil(r*2.6); c.width=c.height=dim; var g=c.getContext('2d'); g.translate(dim/2,dim/2); var palettes=[{range:[210,250],name:'blue',prob:CFG.nebulaStar.blue},{range:[270,310],name:'purple',prob:CFG.nebulaStar.purple},{range:[180,220],name:'green',prob:CFG.nebulaStar.green}]; var pal=palettes[irand(0,palettes.length)]; var density=rand(0.4,1); for(var i=0;i<irand(60,90);i++){ var a=rand(0,Math.PI*2), rr=rand(0,r*0.9); var xx=Math.cos(a)*rr, yy=Math.sin(a)*rr; var rad=rand(r*0.15,r*0.38); var hue=irand(pal.range[0],pal.range[1]); var grad=g.createRadialGradient(xx,yy,rad*0.2,xx,yy,rad); grad.addColorStop(0,'hsla('+hue+',70%,65%,.35)'); grad.addColorStop(1,'hsla('+hue+',70%,50%,0)'); g.fillStyle=grad; g.beginPath(); g.arc(xx,yy,rad,0,Math.PI*2); g.fill(); }
+    return {x:x,y:y,r:r,baseR:r,tex:c,color:pal.name,density:density,starProb:pal.prob*density,age:0,birthTime:irand(4800,9600),layer:Math.random(),alpha:0.3,vx:rand(-0.05,0.05),vy:rand(-0.05,0.05),stage:'nebula'}; }
   function makeGalaxy(){ var r=irand(12,24); var c=document.createElement('canvas'); c.width=c.height=r*4; var g=c.getContext('2d'); g.translate(c.width/2,c.height/2); var arms=irand(3,5); for(var a=0;a<arms;a++){ g.save(); g.rotate((Math.PI*2)*(a/arms)); var grad=g.createLinearGradient(0,0,r*2,0); grad.addColorStop(0,'rgba(255,255,255,0.8)'); grad.addColorStop(1,'rgba(255,255,255,0)'); g.strokeStyle=grad; g.lineWidth=2; g.beginPath(); g.moveTo(0,0); g.lineTo(r*2,0); g.stroke(); g.restore(); } g.fillStyle='rgba(255,255,255,0.8)'; g.beginPath(); g.arc(0,0,r*0.6,0,Math.PI*2); g.fill(); return {x:rand(0,WORLD.w),y:rand(0,WORLD.h),tex:c}; }
 
   function farFromAll(x,y,blackholes,planets){ if(blackholes){ for(var i=0;i<blackholes.length;i++){ var h=blackholes[i]; if(Math.hypot(x-h.x,y-h.y) < h.r + CFG.safety.fromBH) return false; } } if(planets){ for(var j=0;j<planets.length;j++){ var p=planets[j]; if(Math.hypot(x-p.x,y-p.y) < p.r + CFG.safety.fromPlanet) return false; } } if(state && state.stars){ for(var k=0;k<state.stars.length;k++){ var s=state.stars[k]; if(Math.hypot(x-s.x,y-s.y) < s.r + CFG.safety.fromStar) return false; } } return true; }
@@ -743,7 +743,27 @@ document.addEventListener('DOMContentLoaded', function(){
     if(state.docked) tryDeliver();
     if(!DEBUG_MODE && state.credits<=0 && state.ammo<=0 && state.fuel<=0){ return gameOver(); }
 
-    for(var ni2=state.nebulae.length-1; ni2>=0; ni2--){ var NB=state.nebulae[ni2]; NB.age+=1*dt; NB.x+=NB.vx*dt; NB.y+=NB.vy*dt; wrapEntity(NB); if(NB.stage==='fading'){ NB.alpha=Math.max(0,NB.alpha-0.002*dt); if(NB.alpha<=0){ state.nebulae.splice(ni2,1); } continue; } NB.alpha=0.2+0.6*(NB.age/NB.birthTime); if(NB.age>=NB.birthTime){ var st=makeStar(NB.x, NB.y); st.form=0; state.stars.push(st); NB.stage='fading'; toast('✨ A star is born!'); }}
+    for(var ni2=state.nebulae.length-1; ni2>=0; ni2--){
+      var NB=state.nebulae[ni2];
+      NB.age+=1*dt;
+      NB.x+=NB.vx*dt; NB.y+=NB.vy*dt;
+      wrapEntity(NB);
+      if(NB.stage==='fading'){
+        NB.alpha=Math.max(0,NB.alpha-0.002*dt);
+        if(NB.alpha<=0){ state.nebulae.splice(ni2,1); }
+        continue;
+      }
+      var prog = Math.min(1, NB.age/NB.birthTime);
+      NB.alpha=0.3+0.7*prog;
+      NB.r=NB.baseR*(1-prog);
+      if(NB.age>=NB.birthTime){
+        var st=makeStar(NB.x, NB.y);
+        st.form=0;
+        state.stars.push(st);
+        NB.stage='fading';
+        toast('✨ A star is born!');
+      }
+    }
 
     // Star lifecycle with proximity-based warnings
     for(var sidx=state.stars.length-1; sidx>=0; sidx--){ var SS=state.stars[sidx]; SS.life -= 1*dt; SS.flare -= 1*dt; if(SS.form<1) SS.form=Math.min(1,SS.form+0.002*dt); var age=1-SS.life/SS.maxLife; SS.hue=210-age*210; SS.r=SS.baseR*(1+age*0.4)*SS.form; var distToShip=Math.hypot(SS.x-state.ship.x, SS.y-state.ship.y);
@@ -758,7 +778,7 @@ document.addEventListener('DOMContentLoaded', function(){
     state.flashes=state.flashes.filter(function(f){ return f.life>0; });
   }
 
-  function supernova(index){ var st=state.stars[index]; for(var i=0;i<CFG.supernova.shockParticles;i++){ var a=rand(0,Math.PI*2), sp=rand(1.0,3.6); state.particles.push({x:st.x,y:st.y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:rand(22,44),r:rand(1.4,2.6),h:rand(28,58)}); } var count=irand(CFG.supernova.yield[0], CFG.supernova.yield[1]); var baseAngle=rand(0,Math.PI*2); for(var k=0;k<count;k++){ var ang=baseAngle + (k/count)*Math.PI*2 + rand(-0.1,0.1); var off=rand(4, st.r*0.6); var ax=st.x + Math.cos(ang)*off; var ay=st.y + Math.sin(ang)*off; var size=pick(CFG.asteroid.sizes); var a=makeAsteroid(ax, ay, size); var kick=rand(CFG.supernova.kick[0], CFG.supernova.kick[1]); a.vx += Math.cos(ang)*kick; a.vy += Math.sin(ang)*kick; state.asteroids.push(a); } state.nebulae.push(makeNebula(st.x, st.y)); toast('💥 Supernova! New asteroid field detected.'); state.stars.splice(index,1); }
+  function supernova(index){ var st=state.stars[index]; for(var i=0;i<CFG.supernova.shockParticles;i++){ var a=rand(0,Math.PI*2), sp=rand(1.0,3.6); state.particles.push({x:st.x,y:st.y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:rand(22,44),r:rand(1.4,2.6),h:rand(28,58)}); } var baseCount=irand(CFG.supernova.yield[0], CFG.supernova.yield[1]); var count=Math.floor(baseCount*(st.r/100)); var baseAngle=rand(0,Math.PI*2); for(var k=0;k<count;k++){ var ang=baseAngle + (k/count)*Math.PI*2 + rand(-0.1,0.1); var off=rand(4, st.r*0.6); var ax=st.x + Math.cos(ang)*off; var ay=st.y + Math.sin(ang)*off; var size=pick(CFG.asteroid.sizes); var a=makeAsteroid(ax, ay, size); var kick=rand(CFG.supernova.kick[0], CFG.supernova.kick[1]); a.vx += Math.cos(ang)*kick; a.vy += Math.sin(ang)*kick; state.asteroids.push(a); } state.nebulae.push(makeNebula(st.x, st.y)); toast('💥 Supernova! New asteroid field detected.'); state.stars.splice(index,1); }
   function solarFlare(st){ for(var i=0;i<40;i++){ var a=rand(0,Math.PI*2), sp=rand(2,5); state.particles.push({x:st.x,y:st.y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:rand(40,80),r:rand(1,2),h:rand(28,58)}); } var d=Math.hypot(state.ship.x-st.x,state.ship.y-st.y); if(d<CFG.solarFlare.radius && !DEBUG_MODE){ damage(CFG.solarFlare.damage); state.ship.flare=CFG.solarFlare.stun; } toast('☀️ Solar flare!'); }
 
   function draw(){
@@ -775,7 +795,28 @@ document.addEventListener('DOMContentLoaded', function(){
     ctx.save(); ctx.translate(-cam.x, -cam.y);
 
     // back layer objects
-    state.nebulae.filter(function(n){return n.layer<PLANET_LAYER;}).forEach(function(n){ ctx.save(); ctx.globalAlpha=n.alpha; ctx.drawImage(n.tex, n.x - n.tex.width/2, n.y - n.tex.height/2); ctx.restore(); });
+    function drawNebula(n){
+      ctx.save();
+      ctx.globalAlpha=n.alpha;
+      ctx.translate(n.x,n.y);
+      var scale=n.baseR? n.r/n.baseR : 1;
+      ctx.scale(scale,scale);
+      ctx.drawImage(n.tex,-n.tex.width/2,-n.tex.height/2);
+      ctx.restore();
+      if(n.stage==='nebula'){
+        var prog=Math.min(1,n.age/n.birthTime);
+        var core=8+prog*(n.baseR||n.r)*0.3;
+        var grad=ctx.createRadialGradient(n.x,n.y,0,n.x,n.y,core);
+        grad.addColorStop(0,'rgba(255,255,255,'+(0.6+0.4*prog)+')');
+        grad.addColorStop(1,'rgba(255,255,255,0)');
+        ctx.save();
+        ctx.globalCompositeOperation='lighter';
+        ctx.fillStyle=grad;
+        ctx.beginPath(); ctx.arc(n.x,n.y,core,0,Math.PI*2); ctx.fill();
+        ctx.restore();
+      }
+    }
+    state.nebulae.filter(function(n){return n.layer<PLANET_LAYER;}).forEach(drawNebula);
     state.asteroids.filter(function(a){return a.layer<PLANET_LAYER;}).forEach(function(a){ ctx.save(); ctx.translate(a.x,a.y); ctx.rotate(a.a); ctx.drawImage(a.tex,-a.tex.width/2,-a.tex.height/2); ctx.restore(); });
     state.comets.filter(function(c){return c.layer<PLANET_LAYER;}).forEach(function(c){ ctx.save(); ctx.translate(c.x,c.y); ctx.rotate(c.a); ctx.beginPath(); for(var i=0;i<c.offs.length;i++){ var ang=(Math.PI*2)*(i/c.offs.length); var rr=c.r*c.offs[i]; var xx=Math.cos(ang)*rr, yy=Math.sin(ang)*rr; if(i===0) ctx.moveTo(xx,yy); else ctx.lineTo(xx,yy);} ctx.closePath(); ctx.clip(); ctx.drawImage(c.tex,-c.tex.width/2,-c.tex.height/2); ctx.restore(); ctx.save(); c.trail.forEach(function(t){ ctx.globalAlpha=t.life/40; ctx.fillStyle='#fff'; ctx.fillRect(t.x-1,t.y-1,2,2); }); ctx.restore(); });
 
@@ -806,7 +847,7 @@ document.addEventListener('DOMContentLoaded', function(){
     state.particles.forEach(function(p){ ctx.globalAlpha=clamp(p.life/36,0,1); ctx.fillStyle='hsl('+p.h+',70%,70%)'; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();}); ctx.globalAlpha=1;
 
     // front layer objects
-    state.nebulae.filter(function(n){return n.layer>=PLANET_LAYER;}).forEach(function(n){ ctx.save(); ctx.globalAlpha=n.alpha; ctx.drawImage(n.tex, n.x - n.tex.width/2, n.y - n.tex.height/2); ctx.restore(); });
+    state.nebulae.filter(function(n){return n.layer>=PLANET_LAYER;}).forEach(drawNebula);
     state.asteroids.filter(function(a){return a.layer>=PLANET_LAYER;}).forEach(function(a){ ctx.save(); ctx.translate(a.x,a.y); ctx.rotate(a.a); ctx.drawImage(a.tex,-a.tex.width/2,-a.tex.height/2); ctx.restore(); });
     state.comets.filter(function(c){return c.layer>=PLANET_LAYER;}).forEach(function(c){ ctx.save(); ctx.translate(c.x,c.y); ctx.rotate(c.a); ctx.beginPath(); for(var i=0;i<c.offs.length;i++){ var ang=(Math.PI*2)*(i/c.offs.length); var rr=c.r*c.offs[i]; var xx=Math.cos(ang)*rr, yy=Math.sin(ang)*rr; if(i===0) ctx.moveTo(xx,yy); else ctx.lineTo(xx,yy);} ctx.closePath(); ctx.clip(); ctx.drawImage(c.tex,-c.tex.width/2,-c.tex.height/2); ctx.restore(); ctx.save(); c.trail.forEach(function(t){ ctx.globalAlpha=t.life/40; ctx.fillStyle='#fff'; ctx.fillRect(t.x-1,t.y-1,2,2); }); ctx.restore(); });
 
@@ -829,7 +870,7 @@ document.addEventListener('DOMContentLoaded', function(){
     state.bullets.forEach(function(b){ ctx.fillStyle=b.enemy?'#ffb0b0':'#ffffff'; ctx.shadowBlur=6; ctx.shadowColor=b.enemy?'#ff8a8a':'#6df2d6'; ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0; });
 
     // ship
-    var s=state.ship; var flicker=s.inv>0 && s.blink>CFG.ship.blink/2 && !s.justSpawned; if(!(flicker && Math.floor(s.inv)%2===0)){
+    var s=state.ship; var flicker=s.inv>0 && s.blink>CFG.ship.blink/2 && !s.justSpawned; if(!state.inNebula && !(flicker && Math.floor(s.inv)%2===0)){
       s.trail.forEach(function(t){ var alpha=clamp(t.life/22,0,1); ctx.fillStyle='rgba(109,242,214,'+(alpha*.35)+')'; ctx.beginPath(); ctx.arc(t.x,t.y,3*(alpha+.2),0,Math.PI*2); ctx.fill(); });
       ctx.save(); ctx.translate(s.x,s.y); ctx.rotate(s.a); var body=ctx.createLinearGradient(-s.r,s.r,s.r,-s.r); body.addColorStop(0,'#2a3448'); body.addColorStop(1,'#3b4a66'); ctx.fillStyle=body; ctx.strokeStyle='#9cebdc'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(s.r,0); ctx.lineTo(-s.r*.7,-s.r*.65); ctx.lineTo(-s.r,0); ctx.lineTo(-s.r*.7,s.r*.65); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.rect(-s.r*.95,-6, -11,12); ctx.stroke(); ctx.restore();
     }
