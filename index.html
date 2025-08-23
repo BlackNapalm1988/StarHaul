@@ -316,6 +316,7 @@ document.addEventListener('DOMContentLoaded', function(){
     solarFlare:{min:800,max:1600,damage:15,stun:90,radius:260},
     nebulaStar:{blue:0.00005,purple:0.00008,green:0.00003},
     background:{galaxies:6, superflash:0.00002},
+    star:{gravFactor:0.35,maxPull:0.25,fuelDrain:0.12,radiation:0.06},
     ui:{starWarnRadius:900}
   };
 
@@ -371,9 +372,13 @@ document.addEventListener('DOMContentLoaded', function(){
   function makePlanet(i){ var types=["rocky","ocean","ice","lava","gas","industrial"]; var type=types[i % types.length]; var r=irand(28,80); var x,y,tries=0; do{ x=rand(200,WORLD.w-200); y=rand(200,WORLD.h-200); tries++; } while((Math.hypot(x-WORLD.w/2,y-WORLD.h/2)<360 || !farFromAll(x,y,state.blackholes,state.planets)) && tries<200); var names=["Eden","Kovax","Aria","Tarsis","Veld","Khepri","Nysa","Osiris","Ixia","Carina","Prax","Rhea"]; var p={ id:i,x:x,y:y,r:r,type:type,rot:rand(0,Math.PI*2),rotSpeed:rand(-0.0012,0.0012), hasRings:(Math.random()<0.25)&&r>40, name:names[i%names.length]+"-"+(100+i), stock:{fuel:irand(200,600),ammo:irand(50,150)}, prices:{fuel:2+rand(-.3,.4),ammo:5+rand(-1,1),repair:20}, offers:[], layer:PLANET_LAYER }; var tex=bakePlanetTexture(p); p.tex=tex.planet; p.ringsTex=tex.rings; return p; }
   function makeBlackHole(){ return {x:rand(180,WORLD.w-180),y:rand(180,WORLD.h-180),r:32}; }
   function makeStar(x,y){
-    var r=irand(36,88);
+    var r=irand(36,88)*3.5;
+    var margin=r+112;
     if(x==null || y==null){
-      do{ x=rand(200,WORLD.w-200); y=rand(200,WORLD.h-200);} while(!farFromAll(x,y,state.blackholes,state.planets) || !farFromStars(x,y,state.stars));
+      do{ x=rand(margin,WORLD.w-margin); y=rand(margin,WORLD.h-margin);} while(!farFromAll(x,y,state.blackholes,state.planets) || !farFromStars(x,y,state.stars));
+    } else {
+      x=clamp(x, margin, WORLD.w-margin);
+      y=clamp(y, margin, WORLD.h-margin);
     }
     var life=irand(CFG.supernova.minLife, CFG.supernova.maxLife);
     var tex=bakePlanetTexture({r:r,type:'star'}).planet;
@@ -682,6 +687,27 @@ document.addEventListener('DOMContentLoaded', function(){
     state.rifts.forEach(function(r){
       r.x+=r.vx*dt; r.y+=r.vy*dt; wrapEntity(r);
       applyGravity(r, 80, 800, CFG.rifts.pull, dt);
+    });
+
+    state.stars.forEach(function(st){
+      var force = st.r*st.r*CFG.star.gravFactor;
+      applyGravity(st, st.r*2, force, CFG.star.maxPull, dt);
+      var d=Math.hypot(s.x-st.x,s.y-st.y);
+      if(d<st.r*4){
+        var prox=1-d/(st.r*4);
+        if(!DEBUG_MODE){
+          state.fuel=Math.max(0,state.fuel-CFG.star.fuelDrain*prox*dt);
+          updateHUD();
+        }
+        if(d<st.r*3){
+          state.inRadiation=true;
+          if(!DEBUG_MODE && s.inv<=0){
+            s.hull-=CFG.star.radiation*(1-d/(st.r*3))*dt;
+            if(s.hull<=0){ s.hull=0; killShip(); }
+            updateHUD();
+          }
+        }
+      }
     });
 
     if(s.centered){ s.x=s.centerX; s.y=s.centerY; s.vx=0; s.vy=0; }
