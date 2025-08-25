@@ -225,7 +225,7 @@ document.addEventListener('DOMContentLoaded', function(){
   var DEBUG = (location.hash.indexOf('dev')>=0);
   var DEBUG_MODE = false;
 
-  let W=window.innerWidth, H=window.innerHeight; const WORLD={w:10400,h:7800}; const MINI_SIZE=110;
+  let W=window.innerWidth, H=window.innerHeight; const WORLD={w:10400,h:7800}; const MINI_SIZE=300;
   let RADAR_BASE_RANGE;
   var $=function(sel){ return document.querySelector(sel); };
   var wrap=$('.wrap'); if(!wrap){ wrap=document.createElement('div'); wrap.className='wrap'; document.body.appendChild(wrap); }
