@@ -29,7 +29,7 @@
     .item:nth-child(odd){background:rgba(255,255,255,.03)}
     .badge{padding:2px 6px;border-radius:999px;background:rgba(255,255,255,.08);font-size:12px}
     #missionPill{cursor:pointer}
-    #radar{position:absolute;right:16px;bottom:16px;width:480px;height:480px;border-radius:50%;background:rgba(10,14,22,.65);outline:1px solid rgba(255,255,255,.08);display:grid;place-items:center;font-size:12px;z-index:2;overflow:hidden}
+    #radar{position:absolute;right:0;bottom:0;width:110px;height:110px;border-radius:50%;background:#0a0e16;display:grid;place-items:center;font-size:12px;z-index:2;overflow:hidden}
     #radar canvas{border-radius:50%}
     #mini{height:auto;}
     #touchpad{position:absolute;bottom:20px;left:20px;right:20px;display:none;justify-content:space-between;pointer-events:none}
@@ -101,7 +101,7 @@
       </div>
     </div>
 
-    <div id="radar"><canvas id="mini" width="440" height="440" aria-hidden="true"></canvas></div>
+    <div id="radar"><canvas id="mini" width="110" height="110" aria-hidden="true"></canvas></div>
     <div id="toasts"></div>
 
     <div id="mapOverlay" class="overlay hidden">
@@ -225,7 +225,7 @@ document.addEventListener('DOMContentLoaded', function(){
   var DEBUG = (location.hash.indexOf('dev')>=0);
   var DEBUG_MODE = false;
 
-  let W=window.innerWidth, H=window.innerHeight; const WORLD={w:10400,h:7800}; const MINI_SIZE=440;
+  let W=window.innerWidth, H=window.innerHeight; const WORLD={w:10400,h:7800}; const MINI_SIZE=110;
   let RADAR_BASE_RANGE;
   var $=function(sel){ return document.querySelector(sel); };
   var wrap=$('.wrap'); if(!wrap){ wrap=document.createElement('div'); wrap.className='wrap'; document.body.appendChild(wrap); }
@@ -234,7 +234,44 @@ document.addEventListener('DOMContentLoaded', function(){
   function resize(){ W=window.innerWidth; H=window.innerHeight; canvas.width=W; canvas.height=H; RADAR_BASE_RANGE=Math.hypot(W/2, H/2)*2*1.25; }
   resize();
   window.addEventListener('resize', debounce(resize, 150));
-  var mini=$('#mini'); if(!mini){ var radar=document.createElement('div'); radar.id='radar'; radar.style.position='absolute'; radar.style.right='16px'; radar.style.bottom='16px'; radar.style.width='480px'; radar.style.height='480px'; radar.style.borderRadius='50%'; radar.style.background='rgba(10,14,22,.65)'; radar.style.outline='1px solid rgba(255,255,255,.08)'; radar.style.display='grid'; radar.style.placeItems='center'; radar.style.overflow='hidden'; mini=document.createElement('canvas'); mini.id='mini'; mini.width=MINI_SIZE; mini.height=MINI_SIZE; mini.style.borderRadius='50%'; radar.appendChild(mini); wrap.appendChild(radar); } else { mini.width=MINI_SIZE; mini.height=MINI_SIZE; mini.style.borderRadius='50%'; }
+  var mini=$('#mini');
+  if(!mini){
+    var radar=document.createElement('div');
+    radar.id='radar';
+    radar.style.position='absolute';
+    radar.style.right='0px';
+    radar.style.bottom='0px';
+    radar.style.width=MINI_SIZE+'px';
+    radar.style.height=MINI_SIZE+'px';
+    radar.style.borderRadius='50%';
+    radar.style.background='#0a0e16';
+    radar.style.display='grid';
+    radar.style.placeItems='center';
+    radar.style.overflow='hidden';
+    radar.style.padding='0';
+    mini=document.createElement('canvas');
+    mini.id='mini';
+    mini.width=MINI_SIZE;
+    mini.height=MINI_SIZE;
+    mini.style.borderRadius='50%';
+    radar.appendChild(mini);
+    wrap.appendChild(radar);
+  } else {
+    var radar=$('#radar');
+    radar.style.right='0px';
+    radar.style.bottom='0px';
+    radar.style.width=MINI_SIZE+'px';
+    radar.style.height=MINI_SIZE+'px';
+    radar.style.borderRadius='50%';
+    radar.style.background='#0a0e16';
+    radar.style.display='grid';
+    radar.style.placeItems='center';
+    radar.style.overflow='hidden';
+    radar.style.padding='0';
+    mini.width=MINI_SIZE;
+    mini.height=MINI_SIZE;
+    mini.style.borderRadius='50%';
+  }
   var mctx=mini.getContext('2d');
 
   var ui={
@@ -624,7 +661,7 @@ document.addEventListener('DOMContentLoaded', function(){
       else if(state.fuel>0){ s.vx += Math.cos(s.a)*CFG.ship.accel*dt; s.vy += Math.sin(s.a)*CFG.ship.accel*dt; state.fuel -= CFG.economy.fuelUse*dt; if(state.fuel<0) state.fuel=0; updateHUD(); }
     }
     // Nebula slow & burn
-    state.inNebula=false; for(var ni=0; ni<state.nebulae.length; ni++){ var nb=state.nebulae[ni]; var nd=Math.hypot(s.x-nb.x, s.y-nb.y); if(nb.layer>=PLANET_LAYER && nd < nb.r){ s.vx*=0.985; s.vy*=0.985; if(!DEBUG_MODE) state.fuel = Math.max(0,state.fuel - 0.02*dt); state.inNebula=true; } }
+    for(var ni=0; ni<state.nebulae.length; ni++){ var nb=state.nebulae[ni]; var nd=Math.hypot(s.x-nb.x, s.y-nb.y); if(nb.layer>=PLANET_LAYER && nd < nb.r){ s.vx*=0.985; s.vy*=0.985; if(!DEBUG_MODE) state.fuel = Math.max(0,state.fuel - 0.02*dt); } }
 
     s.vx*=CFG.ship.friction; s.vy*=CFG.ship.friction; var sp=Math.hypot(s.vx,s.vy); var max=CFG.ship.maxSpeed; if(sp>max){ s.vx=(s.vx/sp)*max; s.vy=(s.vy/sp)*max; }
     s.x+=s.vx*dt; s.y+=s.vy*dt; s.x=clamp(s.x, s.r, WORLD.w - s.r); s.y=clamp(s.y, s.r, WORLD.h - s.r);
@@ -797,14 +834,6 @@ document.addEventListener('DOMContentLoaded', function(){
         if(!DEBUG_MODE){
           state.fuel=Math.max(0,state.fuel-CFG.star.fuelDrain*prox*dt);
           updateHUD();
-        }
-        if(d<st.r*3){
-          state.inRadiation=true;
-          if(!DEBUG_MODE && s.inv<=0){
-            s.hull-=CFG.star.radiation*(1-d/(st.r*3))*dt;
-            if(s.hull<=0){ s.hull=0; killShip(); }
-            updateHUD();
-          }
         }
       }
     });
@@ -1007,7 +1036,7 @@ document.addEventListener('DOMContentLoaded', function(){
     state.bullets.forEach(function(b){ ctx.fillStyle=b.enemy?'#ffb0b0':'#ffffff'; ctx.shadowBlur=6; ctx.shadowColor=b.enemy?'#ff8a8a':'#6df2d6'; ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0; });
 
     // ship
-    var s=state.ship; var flicker=s.inv>0 && s.blink>CFG.ship.blink/2 && !s.justSpawned; if(!state.inNebula && !state.inRadiation && !(flicker && Math.floor(s.inv)%2===0)){
+    var s=state.ship; var flicker=s.inv>0 && s.blink>CFG.ship.blink/2 && !s.justSpawned; if(!(flicker && Math.floor(s.inv)%2===0)){
       s.trail.forEach(function(t){ var alpha=clamp(t.life/22,0,1); ctx.fillStyle='rgba(109,242,214,'+(alpha*.35)+')'; ctx.beginPath(); ctx.arc(t.x,t.y,3*(alpha+.2),0,Math.PI*2); ctx.fill(); });
       ctx.save(); ctx.translate(s.x,s.y); ctx.rotate(s.a); var body=ctx.createLinearGradient(-s.r,s.r,s.r,-s.r); body.addColorStop(0,'#2a3448'); body.addColorStop(1,'#3b4a66'); ctx.fillStyle=body; ctx.strokeStyle='#9cebdc'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(s.r,0); ctx.lineTo(-s.r*.7,-s.r*.65); ctx.lineTo(-s.r,0); ctx.lineTo(-s.r*.7,s.r*.65); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.rect(-s.r*.95,-6, -11,12); ctx.stroke(); ctx.restore();
     }
