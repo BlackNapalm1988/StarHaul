@@ -1,3 +1,4 @@
+// Main gameplay script for StarHaul
 document.addEventListener('DOMContentLoaded', function(){
   'use strict';
 
@@ -308,25 +309,37 @@ document.addEventListener('DOMContentLoaded', function(){
 
   function cryptoRandom(){ return Math.random().toString(36).slice(2,9); }
   function reqRepForReward(reward){ return clamp(Math.floor(reward/450),0,9); }
+  // Look up a planet by its unique id.
   function planetById(id){ for(var i=0;i<state.planets.length;i++){ if(state.planets[i].id===id) return state.planets[i]; } }
+  // Randomly generate contract offers for a planet until it reaches the configured amount.
   function ensureOffersForPlanet(pid){ var p=planetById(pid); if(!p) return; while(p.offers.length < CFG.contracts.perPlanet){ var to; do{ to = state.planets[irand(0,state.planets.length)]; } while(!to || to.id===p.id); var qty=irand(3,12); var baseDist=Math.hypot(to.x-p.x,to.y-p.y); var reward=Math.floor(qty*(20+baseDist/35)); var time=irand(CFG.contracts.minTime, CFG.contracts.maxTime)+Math.floor(baseDist/2); var reqRep=reqRepForReward(reward); var illegal=Math.random()<CFG.contracts.illegalChance; if(illegal) reward=Math.floor(reward*1.6); reward=Math.floor(reward*(1+state.reputation*0.05)); p.offers.push({id:cryptoRandom(),from:p.id,to:to.id,qty:qty,reward:reward,timeLeft:time,active:false,reqRep:reqRep,illegal:illegal}); } }
+  // Refresh contract offers on all planets, removing expired ones.
   function refreshOffers(initial){ if(!state) return; state.planets.forEach(function(pl){ if(!initial) pl.offers=pl.offers.filter(function(o){return o.timeLeft>0;}); ensureOffersForPlanet(pl.id); }); offerTimer = CFG.contracts.refreshEvery; renderDock(); }
 
+  // Return the planet the ship is currently near, if any.
   function nearbyPlanet(){ for(var i=0;i<state.planets.length;i++){ var pl=state.planets[i]; if(Math.hypot(pl.x-state.ship.x,pl.y-state.ship.y)<pl.r+32) return pl; } }
+  // Dock the ship at the given planet and open the docking UI.
   function dock(p){ if(!state) return; state.docked=p; paused=true; state.ship.x=p.x; state.ship.y=p.y; state.ship.vx=0; state.ship.vy=0; ensureOffersForPlanet(p.id); ui.dockUI.style.display='flex'; renderDock(); tryDeliver(); toast('Docked at '+p.name); }
+  // Leave the current planet and resume flying.
   function undock(){ if(!state) return; var p=state.docked; paused=false; state.docked=null; ui.dockUI.style.display='none'; if(p){ state.ship.x=p.x; state.ship.y=p.y; state.ship.vx=0; state.ship.vy=0; state.ship.centerX=p.x; state.ship.centerY=p.y; state.ship.centered=true; }}
+  // Toggle docking if the ship is near a planet.
   function dockToggle(){ if(!state) return; var p=nearbyPlanet(); if(!p) return; if(state.docked) undock(); else dock(p); }
 
+  // Handle purchases at the station market.
   function marketBuy(what){ if(!state || !state.docked) return; if(what==='fuel'){ var cost1=2*50; if(state.credits>=cost1){ state.credits-=cost1; state.fuel+=50; state.towed=false; } }
     if(what==='ammo'){ var cost2=5*10; if(state.credits>=cost2){ state.credits-=cost2; state.ammo+=10; } }
       if(what==='repair'){ var cost3=20; if(state.credits>=cost3 && state.ship.hull<state.ship.hullMax){ state.credits-=cost3; state.ship.hull=clamp(state.ship.hull+10,0,state.ship.hullMax); } }
     updateHUD(); renderDock(); tryDeliver(); }
 
+  // Calculate the price of a ship upgrade based on its current level.
   function upgradeCost(key, level){ var base={engine:200,gun:180,hold:150,shield:220,radar:180}; return Math.floor(base[key]*Math.pow(1.5, level-1)); }
+  // Purchase the requested upgrade if the player has enough credits and meets requirements.
   function buyUpgrade(key){ if(!state) return; var s=state.ship; if(s[key]===undefined) return; if(s[key]>=4){ toast('Upgrade '+key+' is maxed'); return; } if(s.hull<s.hullMax){ toast('Repair hull before upgrading'); return; } var cost=upgradeCost(key,s[key]); if(state.credits<cost) return; state.credits-=cost; if(key==='engine'){ s.engine++; CFG.ship.accel*=1.18; CFG.ship.maxSpeed*=1.18; } if(key==='gun'){ s.gun++; CFG.bullets.speed*=1.18; } if(key==='hold'){ s.hold++; state.cargoMax+=10; } if(key==='shield'){ s.shield++; s.hullMax+=10; s.hull=s.hullMax; s.inv=Math.max(s.inv,160); } if(key==='radar'){ s.radar++; } updateHUD(); renderDock(); }
 
+  // Assign the currently docked planet as the player's home.
   function setHome(){ if(!state || !state.docked) return; state.home = state.docked; toast('Home set to '+state.home.name); renderDock(); }
 
+  // Register keyboard controls for the game.
   function keybinds(){
     window.addEventListener('keydown',function(e){ if(!running||!state) return; if(e.repeat) return; var s=state.ship; if(s.flare>0) return; switch(e.code){
       case 'ArrowLeft': case 'KeyA': s.turn=-1; break;
@@ -345,6 +358,7 @@ document.addEventListener('DOMContentLoaded', function(){
     }});
   }
 
+  // Update on-screen HUD elements with the latest game state.
   function updateHUD(){
     if(!state) return;
     ui.credits.textContent=Math.floor(state.credits);
@@ -366,6 +380,7 @@ document.addEventListener('DOMContentLoaded', function(){
     renderMissionLog();
     if(paused) updatePauseStats();
   }
+  // Build the docking UI, including market and available missions.
   function renderDock(){
     if(!state || !state.docked) return;
     var here=state.docked;
@@ -385,6 +400,7 @@ document.addEventListener('DOMContentLoaded', function(){
       ui.upgrades.querySelectorAll('[data-up]').forEach(function(b){ b.onclick=function(){ buyUpgrade(b.getAttribute('data-up')); }; });
     document.querySelectorAll('[data-buy]').forEach(function(b){ b.onclick=function(){ marketBuy(b.getAttribute('data-buy')); }; });
   }
+  // Render all active missions to the mission log sidebar.
   function renderMissionLog(){ if(!state){ ui.missionLogList.innerHTML='<div class="item">No active missions.</div>'; return; } var items=state.missions.map(function(m){ var dest=planetById(m.to); var from=planetById(m.from); var tracked=state.tracked===m.id; var left=Math.max(0,Math.floor(m.timeLeft)); var illegal=m.illegal?'<span class="badge" style="background:rgba(255,0,0,.15);color:#f99">Illegal</span>':''; return '<div class="item"><div><b>'+m.qty+' units</b> from <i>'+from.name+'</i> → <i>'+dest.name+'</i> <span class="badge">$'+m.reward+'</span> '+illegal+' <span class="badge">'+left+'s</span></div><div><button class="btn" data-track="'+m.id+'">'+(tracked?'Untrack':'Track')+'</button></div></div>'; }).join('') || '<div class="item">No active missions. Dock and accept contracts.</div>'; ui.missionLogList.innerHTML=items; ui.missionLogList.querySelectorAll('[data-track]').forEach(function(b){ b.onclick=function(){ toggleTrack(b.getAttribute('data-track')); }; }); }
   function toggleTrack(id){ if(!state) return; state.tracked=(state.tracked===id?null:id); renderMissionLog(); }
 
