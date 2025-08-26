@@ -8,23 +8,26 @@
 
 </head>
 <body>
-  <div class="wrap">
-    <canvas id="game" width="960" height="600"></canvas>
-    <div id="lifeBar"><div id="lifeFill"></div></div>
+    <div class="wrap">
+      <canvas id="game" width="960" height="600"></canvas>
+      <div id="lifeBar"><div id="lifeFill"></div></div>
 
-    <div id="hud">
+      <!-- Heads-up display showing player stats and actions -->
+      <div id="hud">
       <div class="pill stat">$<span id="credits">0</span> · Fuel <span id="fuel">0</span> · Ammo <span id="ammo">0</span> · Cargo <span id="cargo">0</span>/<span id="cargoMax">0</span> · Hull <span id="hull">100</span>/<span id="hullMax">100</span> · Lives <span id="lives">3</span> · Rep <span id="rep">0</span></div>
       <div class="pill stat" id="missionPill" title="Mission Log (click)">Missions: <span id="missionCount">0</span></div>
       <div class="pill"><button class="btn" id="pauseBtn">Pause</button> <button class="btn" id="restartBtn">Restart</button></div>
     </div>
 
-    <div id="missionLog">
+      <!-- Collapsible mission log -->
+      <div id="missionLog">
       <h3>Mission Log</h3>
       <div class="list" id="missionLogList"></div>
       <div class="muted" style="font-size:12px">Tip: Higher <b>Reputation</b> unlocks better‑paying contracts.</div>
     </div>
 
-    <div id="dockUI">
+      <!-- Docking interface with market and contracts -->
+      <div id="dockUI">
       <div class="dock" id="market">
         <h3>Station Market</h3>
         <div class="row">
