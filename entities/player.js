@@ -1,4 +1,12 @@
-import { WORLD } from '../core/config.js';
+import { WORLD, CFG } from '../core/config.js';
+
+const num = (v, path) => {
+  if (typeof v !== 'number') throw new Error(`CFG.${path} must be a number`);
+};
+
+num(CFG.ship?.r, 'ship.r');
+num(CFG.ship?.invuln, 'ship.invuln');
+num(CFG.ship?.hullMax, 'ship.hullMax');
 
 export function newShip(){
   return {

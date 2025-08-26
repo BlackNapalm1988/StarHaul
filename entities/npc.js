@@ -1,4 +1,14 @@
-import { WORLD } from '../core/config.js';
+import { WORLD, CFG } from '../core/config.js';
+
+const num = (v, path) => {
+  if (typeof v !== 'number') throw new Error(`CFG.${path} must be a number`);
+};
+
+num(CFG.pirateBase?.r, 'pirateBase.r');
+num(CFG.pirateBase?.hp, 'pirateBase.hp');
+num(CFG.pirateBase?.spawnEvery, 'pirateBase.spawnEvery');
+num(CFG.pirateBase?.fireEvery, 'pirateBase.fireEvery');
+num(CFG.hunters?.fireEvery, 'hunters.fireEvery');
 
 export function makePirate(){
   const side = Math.floor(Math.random()*4);
