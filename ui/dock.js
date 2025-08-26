@@ -1,6 +1,7 @@
 import { renderMissionLog } from './hud.js';
 import { ensureOffersForPlanet } from '../systems/contracts.js';
 import { marketBuy } from '../systems/economy.js';
+import { saveGame } from '../core/save.js';
 
 export function renderDock(ui, state){
   if(!state.docked) return;
@@ -13,6 +14,7 @@ export function dock(state, planet, ui){
   state.docked = planet;
   ui.dockUI.style.display = 'flex';
   renderDock(ui, state);
+  saveGame(state);
 }
 
 export function undock(state, ui){
