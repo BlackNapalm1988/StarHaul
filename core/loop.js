@@ -1,17 +1,23 @@
 let running = false;
 let paused = false;
 let lastTime = 0;
+let accumulator = 0;
+const STEP = 1000 / 60;
 let updateFn = () => {};
 let drawFn = () => {};
 
 function loop(ts){
   if(!running) return;
   if(!lastTime) lastTime = ts;
-  let dt = (ts - lastTime) / (1000/60);
-  if(dt <= 0 || dt > 5) dt = 1;
+  let delta = ts - lastTime;
+  if(delta > 1000) delta = STEP;
   lastTime = ts;
-  if(!paused) updateFn(dt);
-  drawFn();
+  accumulator += delta;
+  while(accumulator >= STEP){
+    if(!paused) updateFn(STEP / (1000/60));
+    accumulator -= STEP;
+  }
+  drawFn(accumulator / STEP);
   requestAnimationFrame(loop);
 }
 
@@ -21,6 +27,7 @@ export function start(update, draw){
   running = true;
   paused = false;
   lastTime = 0;
+  accumulator = 0;
   requestAnimationFrame(loop);
 }
 
