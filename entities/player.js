@@ -1,3 +1,5 @@
+import { WORLD } from '../core/config.js';
+
 export function newShip(){
   return {
     x: WORLD.w/2, y: WORLD.h/2, vx:0, vy:0, a:-Math.PI/2,
