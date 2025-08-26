@@ -1,7 +1,19 @@
 import { newShip } from '../entities/player.js';
 import { makePirate } from '../entities/npc.js';
 import { createPool } from '../core/pool.js';
-import { WORLD } from '../core/config.js';
+import { WORLD, CFG } from '../core/config.js';
+
+const num = (v, path) => {
+  if (typeof v !== 'number') throw new Error(`CFG.${path} must be a number`);
+};
+
+num(CFG.economy?.startCredits, 'economy.startCredits');
+num(CFG.economy?.fuelStart, 'economy.fuelStart');
+num(CFG.economy?.ammoStart, 'economy.ammoStart');
+num(CFG.economy?.cargoMax, 'economy.cargoMax');
+num(CFG.planets, 'planets');
+num(CFG.blackholes, 'blackholes');
+num(CFG.stars, 'stars');
 
 export function makePlanet(id){
   return { id, x: Math.random()*WORLD.w, y: Math.random()*WORLD.h, r: 40, offers: [] };

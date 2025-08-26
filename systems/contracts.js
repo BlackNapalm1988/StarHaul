@@ -1,3 +1,12 @@
+import { CFG } from '../core/config.js';
+
+const num = (v, path) => {
+  if (typeof v !== 'number') throw new Error(`CFG.${path} must be a number`);
+};
+
+num(CFG.contracts?.perPlanet, 'contracts.perPlanet');
+num(CFG.contracts?.maxTime, 'contracts.maxTime');
+
 export function ensureOffersForPlanet(state, planet){
   while(planet.offers.length < CFG.contracts.perPlanet){
     let to;
