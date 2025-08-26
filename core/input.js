@@ -4,6 +4,13 @@ export function initInput(opts){
     if(e.repeat) return;
     const s = opts.getState().ship;
     if(s.flare>0) return;
+    if(e.ctrlKey && opts.isDebug && opts.isDebug()){
+      switch(e.code){
+        case 'Digit1': opts.cheatFuel && opts.cheatFuel(); return;
+        case 'Digit2': opts.cheatCargo && opts.cheatCargo(); return;
+        case 'Digit3': opts.cheatHazard && opts.cheatHazard(); return;
+      }
+    }
     switch(e.code){
       case 'ArrowLeft': case 'KeyA': s.turn=-1; break;
       case 'ArrowRight': case 'KeyD': s.turn=1; break;
