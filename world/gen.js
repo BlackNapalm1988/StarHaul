@@ -1,5 +1,6 @@
 import { newShip } from '../entities/player.js';
 import { makePirate } from '../entities/npc.js';
+import { createPool } from '../core/pool.js';
 
 export function makePlanet(id){
   return { id, x: Math.random()*WORLD.w, y: Math.random()*WORLD.h, r: 40, offers: [] };
@@ -23,6 +24,8 @@ export function reset(){
     cargoMax: CFG.economy.cargoMax,
     bullets: [],
     particles: [],
+    bulletPool: createPool(() => ({x:0, y:0, vx:0, vy:0, r:2, life:0})),
+    particlePool: createPool(() => ({x:0, y:0, vx:0, vy:0, r:1, life:0})),
     asteroids: [],
     planets: [],
     blackholes: [],

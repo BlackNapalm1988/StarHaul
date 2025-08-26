@@ -4,9 +4,11 @@ import { reset } from './world/gen.js';
 import { refreshOffers } from './systems/contracts.js';
 import { updateHUD } from './ui/hud.js';
 import { renderDock, dockToggle, dock, undock, marketBuy } from './ui/dock.js';
+import { updateWorld, drawWorld } from './world/world.js';
 
 let state = null;
 let running = false;
+let ctx = null;
 
 const ui = {
   dockUI: document.getElementById('dockUI'),
@@ -25,16 +27,20 @@ const ui = {
 };
 
 function update(){
+  updateWorld(state, 1);
   refreshOffers(state);
   updateHUD(ui, state);
 }
 
 function draw(){
-  // drawing handled elsewhere
+  drawWorld(ctx, state);
 }
 
 function startGame(){
+  const canvas = document.getElementById('game');
+  ctx = canvas.getContext('2d');
   state = reset();
+  state.camera = {x:0, y:0, w:canvas.width, h:canvas.height};
   running = true;
   start(update, draw);
 }
