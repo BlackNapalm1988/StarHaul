@@ -17,6 +17,15 @@ StarHaul is a lightweight browser game where you pilot a small cargo ship across
 - **Shift** – Hyperspace jump
 - **P** – Pause
 
+## Debug Commands
+
+Enable **Debug mode** from the settings screen to access these commands:
+
+- `~` – Toggle debug overlay (FPS, entity counts, state flags)
+- `Ctrl+1` – Refill fuel
+- `Ctrl+2` – Add cargo
+- `Ctrl+3` – Spawn a nearby hazard
+
 ## Credits
 
 Created by the original StarHaul developers. This repository contains modifications for readability and documentation.

@@ -7,10 +7,12 @@ import { renderDock, dockToggle, dock, undock, marketBuy } from './ui/dock.js';
 import { updateWorld, drawWorld } from './world/world.js';
 import { loadAll, getImage } from './core/assets.js';
 import { saveGame, loadGame } from './core/save.js';
+import { initDebug } from './ui/debug.js';
 
 let state = null;
 let running = false;
 let ctx = null;
+let debugMode = false;
 
 const ui = {
   dockUI: document.getElementById('dockUI'),
@@ -68,7 +70,22 @@ initInput({
   dockToggle: () => dockToggle(state, ui, state.planets[0]),
   useGate: () => {},
   hyperspace: () => {},
-  togglePause
+  togglePause,
+  isDebug: () => debugMode,
+  cheatFuel: () => { state.fuel += 50; updateHUD(ui, state); },
+  cheatCargo: () => {
+    state.cargo = Math.min(state.cargoMax, state.cargo + 10);
+    updateHUD(ui, state);
+  },
+  cheatHazard: () => {
+    state.stars.push({ x: state.ship.x + 100, y: state.ship.y, r: 60 });
+  }
+});
+
+initDebug({
+  getState: () => state,
+  isRunning: () => running,
+  isDebug: () => debugMode
 });
 
 const loadingOverlay = document.getElementById('loadingOverlay');
@@ -77,6 +94,10 @@ const startScreen = document.getElementById('startScreen');
 const newGameBtn = document.getElementById('newGameBtn');
 const continueBtn = document.getElementById('continueBtn');
 const startImage = document.getElementById('startImage');
+const debugToggle = document.getElementById('debugToggle');
+debugToggle.addEventListener('change', e => {
+  debugMode = e.target.checked;
+});
 
 let saved = null;
 
