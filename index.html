@@ -78,9 +78,11 @@
       <button class="tbtn fire" id="fireBtn" data-act="fire"></button>
     </div>
 
-    <div id="startScreen" class="overlay">
+    <div id="loadingOverlay" class="overlay"><div id="loadingText">Loading...</div></div>
+
+    <div id="startScreen" class="overlay hidden">
       <div class="panel">
-        <img src="StarHauler_Startscreen.png" alt="StarHaul" class="start-image" />
+        <img id="startImage" alt="StarHaul" class="start-image" />
         <p class="sub">RTS‑lite cargo runner. Explore a vast sector with planets, contracts, pirates, black holes — and deadly, evolving stars.</p>
         <div class="grid">
           <div>
@@ -103,17 +105,7 @@
           </div>
         </div>
         <div class="actions">
-          <button class="btn" id="newGameBtn">New Game</button>
-          <button class="btn" id="viewScoresBtn">High Scores</button>
-          <button class="btn" id="settingsBtn">Settings</button>
-          <button class="btn" id="quitBtn">Quit</button>
-        </div>
-        <div id="leaderboard" class="hidden">
-          <h3>Leaderboard</h3>
-          <table>
-            <thead><tr><th>#</th><th>Pilot</th><th>Credits</th><th>Rep</th><th>Date</th></tr></thead>
-            <tbody id="scoresBody"></tbody>
-          </table>
+          <button class="btn" id="startBtn">Click to Start</button>
         </div>
       </div>
     </div>
