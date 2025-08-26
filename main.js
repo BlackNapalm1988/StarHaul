@@ -5,6 +5,7 @@ import { refreshOffers } from './systems/contracts.js';
 import { updateHUD } from './ui/hud.js';
 import { renderDock, dockToggle, dock, undock, marketBuy } from './ui/dock.js';
 import { updateWorld, drawWorld } from './world/world.js';
+import { loadAll, getImage } from './core/assets.js';
 
 let state = null;
 let running = false;
@@ -60,4 +61,22 @@ initInput({
   togglePause
 });
 
-document.addEventListener('DOMContentLoaded', startGame);
+const loadingOverlay = document.getElementById('loadingOverlay');
+const loadingText = document.getElementById('loadingText');
+const startScreen = document.getElementById('startScreen');
+const startBtn = document.getElementById('startBtn');
+const startImage = document.getElementById('startImage');
+
+loadAll(p => {
+  loadingText.textContent = `Loading... ${Math.round(p * 100)}%`;
+}).then(() => {
+  loadingOverlay.classList.add('hidden');
+  startScreen.classList.remove('hidden');
+  const img = getImage('startScreen');
+  if (img) startImage.src = img.src;
+});
+
+startBtn.addEventListener('click', () => {
+  startScreen.classList.add('hidden');
+  startGame();
+});
