@@ -1,3 +1,5 @@
+import { WORLD } from '../core/config.js';
+
 export function makePirate(){
   const side = Math.floor(Math.random()*4);
   const m = 80;

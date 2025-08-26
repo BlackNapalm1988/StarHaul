@@ -1,6 +1,7 @@
 import { newShip } from '../entities/player.js';
 import { makePirate } from '../entities/npc.js';
 import { createPool } from '../core/pool.js';
+import { WORLD } from '../core/config.js';
 
 export function makePlanet(id){
   return { id, x: Math.random()*WORLD.w, y: Math.random()*WORLD.h, r: 40, offers: [] };
