@@ -14,14 +14,17 @@ export function makeStar(){
   return { x: Math.random()*WORLD.w, y: Math.random()*WORLD.h, r: 60 };
 }
 
-export function reset(){
+export function reset(seed = Math.random()){
   const state = {
+    seed,
     ship: newShip(),
     credits: CFG.economy.startCredits,
     fuel: CFG.economy.fuelStart,
     ammo: CFG.economy.ammoStart,
     cargo: 0,
     cargoMax: CFG.economy.cargoMax,
+    reputation: 0,
+    discovered: [],
     bullets: [],
     particles: [],
     bulletPool: createPool(() => ({x:0, y:0, vx:0, vy:0, r:2, life:0})),

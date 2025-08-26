@@ -6,6 +6,7 @@ import { updateHUD } from './ui/hud.js';
 import { renderDock, dockToggle, dock, undock, marketBuy } from './ui/dock.js';
 import { updateWorld, drawWorld } from './world/world.js';
 import { loadAll, getImage } from './core/assets.js';
+import { saveGame, loadGame } from './core/save.js';
 
 let state = null;
 let running = false;
@@ -37,10 +38,18 @@ function draw(){
   drawWorld(ctx, state);
 }
 
-function startGame(){
+function startGame(loaded){
   const canvas = document.getElementById('game');
   ctx = canvas.getContext('2d');
-  state = reset();
+  if (loaded) {
+    state = reset(loaded.seed);
+    state.credits = loaded.credits;
+    state.reputation = loaded.reputation || 0;
+    state.discovered = loaded.discovered || [];
+    Object.assign(state.ship, loaded.upgrades || {});
+  } else {
+    state = reset();
+  }
   state.camera = {x:0, y:0, w:canvas.width, h:canvas.height};
   running = true;
   start(update, draw);
@@ -48,6 +57,7 @@ function startGame(){
 
 function togglePause(){
   if(!running) return;
+  saveGame(state);
   pause();
 }
 
@@ -64,19 +74,34 @@ initInput({
 const loadingOverlay = document.getElementById('loadingOverlay');
 const loadingText = document.getElementById('loadingText');
 const startScreen = document.getElementById('startScreen');
-const startBtn = document.getElementById('startBtn');
+const newGameBtn = document.getElementById('newGameBtn');
+const continueBtn = document.getElementById('continueBtn');
 const startImage = document.getElementById('startImage');
+
+let saved = null;
 
 loadAll(p => {
   loadingText.textContent = `Loading... ${Math.round(p * 100)}%`;
 }).then(() => {
   loadingOverlay.classList.add('hidden');
   startScreen.classList.remove('hidden');
+  saved = loadGame();
+  if(!saved) continueBtn.classList.add('hidden');
+  else continueBtn.classList.remove('hidden');
   const img = getImage('startScreen');
   if (img) startImage.src = img.src;
 });
 
-startBtn.addEventListener('click', () => {
+newGameBtn.addEventListener('click', () => {
   startScreen.classList.add('hidden');
   startGame();
+});
+
+continueBtn.addEventListener('click', () => {
+  startScreen.classList.add('hidden');
+  startGame(saved);
+});
+
+window.addEventListener('beforeunload', () => {
+  if(state) saveGame(state);
 });
