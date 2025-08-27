@@ -41,8 +41,9 @@
     #mapKey{position:absolute;top:20px;left:20px;padding:8px 10px;border-radius:8px;background:rgba(0,0,0,.55);font-size:14px;line-height:1.4}
     #mapKey div{display:flex;align-items:center;gap:6px;margin-bottom:4px}
     #mapKey div:last-child{margin-bottom:0}
-    #mapKey .swatch{width:12px;height:12px;border-radius:2px;display:inline-block}
-    #startScreen .actions{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
+      #mapKey .swatch{width:12px;height:12px;border-radius:2px;display:inline-block}
+      .overlay .close-btn{position:absolute;top:20px;right:20px}
+      #startScreen .actions{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
     #startScreen img.start-image{width:100%;height:auto;}
     #leaderboard{margin-top:12px}
     #leaderboard table{width:100%;border-collapse:collapse}

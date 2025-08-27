@@ -8,6 +8,7 @@ import { updateWorld, drawWorld } from './world/world.js';
 import { loadAll, getImage } from './core/assets.js';
 import { saveGame, loadGame } from './core/save.js';
 import { initDebug } from './ui/debug.js';
+import { initMap, updateMap } from './ui/map.js';
 
 let state = null;
 let running = false;
@@ -38,6 +39,7 @@ function update(){
 
 function draw(){
   drawWorld(ctx, state);
+  updateMap();
 }
 
 function startGame(loaded){
@@ -87,6 +89,8 @@ initDebug({
   isRunning: () => running,
   isDebug: () => debugMode
 });
+
+initMap({ getState: () => state });
 
 const loadingOverlay = document.getElementById('loadingOverlay');
 const loadingText = document.getElementById('loadingText');
