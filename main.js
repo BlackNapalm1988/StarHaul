@@ -13,6 +13,7 @@ let state = null;
 let running = false;
 let ctx = null;
 let debugMode = false;
+let paused = false;
 
 const ui = {
   dockUI: document.getElementById('dockUI'),
@@ -57,10 +58,27 @@ function startGame(loaded){
   start(update, draw);
 }
 
+function restartGame(){
+  const canvas = document.getElementById('game');
+  state = reset();
+  state.camera = { x: 0, y: 0, w: canvas.width, h: canvas.height };
+  paused = false;
+  pauseOverlay.classList.add('hidden');
+  running = true;
+  resume();
+}
+
 function togglePause(){
   if(!running) return;
-  saveGame(state);
-  pause();
+  if(!paused){
+    saveGame(state);
+    pause();
+    pauseOverlay.classList.remove('hidden');
+  } else {
+    pauseOverlay.classList.add('hidden');
+    resume();
+  }
+  paused = !paused;
 }
 
 initInput({
@@ -95,9 +113,19 @@ const newGameBtn = document.getElementById('newGameBtn');
 const continueBtn = document.getElementById('continueBtn');
 const startImage = document.getElementById('startImage');
 const debugToggle = document.getElementById('debugToggle');
+const pauseBtn = document.getElementById('pauseBtn');
+const restartBtn = document.getElementById('restartBtn');
+const pauseOverlay = document.getElementById('pauseOverlay');
+const resumeBtn = document.getElementById('resumeBtn');
+const pauseRestartBtn = document.getElementById('pauseRestartBtn');
 debugToggle.addEventListener('change', e => {
   debugMode = e.target.checked;
 });
+
+pauseBtn.addEventListener('click', togglePause);
+restartBtn.addEventListener('click', restartGame);
+resumeBtn.addEventListener('click', togglePause);
+pauseRestartBtn.addEventListener('click', restartGame);
 
 let saved = null;
 
