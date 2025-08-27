@@ -16,6 +16,25 @@ let ctx = null;
 let debugMode = false;
 let paused = false;
 
+const DOCK_RADIUS = 80;
+
+function findNearestDockablePlanet(state){
+  if(!state) return null;
+  const { ship, planets } = state;
+  let nearest = null;
+  let best = Infinity;
+  for(const p of planets){
+    const dx = p.x - ship.x;
+    const dy = p.y - ship.y;
+    const dist = Math.hypot(dx, dy);
+    if(dist <= p.r + DOCK_RADIUS && dist < best){
+      best = dist;
+      nearest = p;
+    }
+  }
+  return nearest;
+}
+
 const ui = {
   dockUI: document.getElementById('dockUI'),
   missionList: document.getElementById('missionList'),
@@ -87,7 +106,10 @@ initInput({
   isRunning: () => running,
   getState: () => state,
   fire: () => {},
-  dockToggle: () => dockToggle(state, ui, state.planets[0]),
+  dockToggle: () => {
+    const planet = findNearestDockablePlanet(state);
+    if (planet || state.docked) dockToggle(state, ui, planet);
+  },
   useGate: () => {},
   hyperspace: () => {},
   togglePause,
