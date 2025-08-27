@@ -7,8 +7,40 @@ function isVisible(cam, obj){
   );
 }
 
+import { WORLD } from '../core/config.js';
+
 export function updateWorld(state, dt){
   const cam = state.camera;
+  const s = state.ship;
+
+  // --- ship physics ---
+  s.a += s.turn * 0.1 * dt;
+  if (s.thrust) {
+    const acc = 0.1;
+    s.vx += Math.cos(s.a) * acc * dt;
+    s.vy += Math.sin(s.a) * acc * dt;
+  }
+  s.x += s.vx * dt;
+  s.y += s.vy * dt;
+  s.vx *= 0.99;
+  s.vy *= 0.99;
+
+  // camera follows the ship, ease in when first centering
+  if (!s.centered) {
+    s.centerX += (s.x - s.centerX) * 0.1;
+    s.centerY += (s.y - s.centerY) * 0.1;
+    cam.x = s.centerX - cam.w / 2;
+    cam.y = s.centerY - cam.h / 2;
+    if (Math.abs(s.centerX - s.x) < 1 && Math.abs(s.centerY - s.y) < 1) {
+      s.centered = true;
+    }
+  } else {
+    cam.x = s.x - cam.w / 2;
+    cam.y = s.y - cam.h / 2;
+  }
+  cam.x = Math.max(0, Math.min(WORLD.w - cam.w, cam.x));
+  cam.y = Math.max(0, Math.min(WORLD.h - cam.h, cam.y));
+
   for(let i=state.bullets.length-1;i>=0;i--){
     const b = state.bullets[i];
     b.x += b.vx * dt;
@@ -49,6 +81,18 @@ export function drawWorld(ctx, state){
     ctx.arc(p.x - cam.x, p.y - cam.y, p.r, 0, Math.PI*2);
     ctx.fill();
   }
+  const ship = state.ship;
+  ctx.save();
+  ctx.translate(ship.x - cam.x, ship.y - cam.y);
+  ctx.rotate(ship.a);
+  ctx.fillStyle = '#0f0';
+  ctx.beginPath();
+  ctx.moveTo(ship.r, 0);
+  ctx.lineTo(-ship.r, ship.r/2);
+  ctx.lineTo(-ship.r, -ship.r/2);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
   ctx.fillStyle = '#ff0';
   for(const b of state.bullets){
     if(!isVisible(cam, b)) continue;
