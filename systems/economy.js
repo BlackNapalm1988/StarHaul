@@ -16,11 +16,14 @@ export function upgradeCost(key, level){
 
 export function buyUpgrade(state, key){
   const s = state.ship;
-  const lvl = s[key] || 1;
-  const cost = upgradeCost(key, lvl);
-  if(state.credits < cost) return;
+  const lvl = s[key] || 0;
+  const max = 4;
+  if(lvl >= max) return false;
+  const cost = upgradeCost(key, lvl || 1);
+  if(state.credits < cost) return false;
   state.credits -= cost;
   s[key] = lvl + 1;
+  return true;
 }
 
 export function setHome(state, planet){

@@ -27,7 +27,8 @@ const ui = {
   lives: document.getElementById('lives'),
   rep: document.getElementById('rep'),
   missionCount: document.getElementById('missionCount'),
-  missionLogList: document.getElementById('missionLogList')
+  missionLogList: document.getElementById('missionLogList'),
+  upgrades: document.getElementById('upgrades')
 };
 
 function update(){
