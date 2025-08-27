@@ -7,7 +7,18 @@ export function renderDock(ui, state){
   if(!state.docked) return;
   const here = state.docked;
   ensureOffersForPlanet(state, here);
-  ui.missionList.innerHTML = here.offers.map(o => `<div class="item">Deliver ${o.qty} to ${o.to} <span class="badge">$${o.reward}</span></div>`).join('');
+  ui.missionList.innerHTML = here.offers.map(o => `<div class="item" data-id="${o.id}">Deliver ${o.qty} to ${o.to} <span class="badge">$${o.reward}</span></div>`).join('');
+  ui.missionList.querySelectorAll('.item').forEach(el => {
+    el.addEventListener('click', () => {
+      const id = el.dataset.id;
+      const idx = here.offers.findIndex(o => o.id === id);
+      if(idx === -1) return;
+      const mission = here.offers.splice(idx, 1)[0];
+      state.missions.push(mission);
+      renderMissionLog(ui, state);
+      renderDock(ui, state);
+    });
+  });
 }
 
 export function dock(state, planet, ui){

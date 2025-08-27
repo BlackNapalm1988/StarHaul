@@ -95,8 +95,13 @@ const newGameBtn = document.getElementById('newGameBtn');
 const continueBtn = document.getElementById('continueBtn');
 const startImage = document.getElementById('startImage');
 const debugToggle = document.getElementById('debugToggle');
+const missionPill = document.getElementById('missionPill');
+const missionLog = document.getElementById('missionLog');
 debugToggle.addEventListener('change', e => {
   debugMode = e.target.checked;
+});
+missionPill.addEventListener('click', () => {
+  missionLog.style.display = missionLog.style.display === 'block' ? 'none' : 'block';
 });
 
 let saved = null;
