@@ -8,6 +8,7 @@ function isVisible(cam, obj){
 }
 
 import { WORLD } from '../core/config.js';
+import { getImage } from '../core/assets.js';
 
 export function updateWorld(state, dt){
   const cam = state.camera;
@@ -74,24 +75,17 @@ export function drawWorld(ctx, state){
     ctx.fillStyle = '#fff';
     ctx.fillRect(s.x - cam.x, s.y - cam.y, 2, 2);
   }
+  const planetImg = getImage('planet');
   for(const p of state.planets){
     if(!isVisible(cam, p)) continue;
-    ctx.fillStyle = '#0af';
-    ctx.beginPath();
-    ctx.arc(p.x - cam.x, p.y - cam.y, p.r, 0, Math.PI*2);
-    ctx.fill();
+    ctx.drawImage(planetImg, p.x - cam.x - p.r, p.y - cam.y - p.r, p.r*2, p.r*2);
   }
   const ship = state.ship;
+  const shipImg = getImage('ship');
   ctx.save();
   ctx.translate(ship.x - cam.x, ship.y - cam.y);
   ctx.rotate(ship.a);
-  ctx.fillStyle = '#0f0';
-  ctx.beginPath();
-  ctx.moveTo(ship.r, 0);
-  ctx.lineTo(-ship.r, ship.r/2);
-  ctx.lineTo(-ship.r, -ship.r/2);
-  ctx.closePath();
-  ctx.fill();
+  ctx.drawImage(shipImg, -ship.r, -ship.r, ship.r*2, ship.r*2);
   ctx.restore();
   ctx.fillStyle = '#ff0';
   for(const b of state.bullets){
