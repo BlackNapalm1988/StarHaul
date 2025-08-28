@@ -98,7 +98,7 @@ function loadImage(key, src, onProgress) {
       images[key] = img;
       resolve(img);
     };
-    img.onerror = reject;
+    img.onerror = () => reject(new Error(`Failed to load image: ${src}`));
     img.src = src;
   }).then(res => {
     if (onProgress) onProgress();
@@ -124,7 +124,11 @@ export async function loadAll(progressCallback) {
     update();
     return Promise.resolve(img);
   });
-  await Promise.all(promises);
+  try {
+    await Promise.all(promises);
+  } catch (err) {
+    throw new Error(`Failed to load assets: ${err.message || err}`);
+  }
   return images;
 }
 
