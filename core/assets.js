@@ -29,10 +29,23 @@ function bakePlanetTexture() {
   return c;
 }
 
+function bakeAsteroidTexture(){
+  const r = 20;
+  const c = document.createElement('canvas');
+  c.width = c.height = r * 2;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#888';
+  ctx.beginPath();
+  ctx.arc(r, r, r, 0, Math.PI * 2);
+  ctx.fill();
+  return c;
+}
+
 const imageSources = {
   startScreen: 'StarHauler_Startscreen.png',
   ship: bakeShipTexture,
-  planet: bakePlanetTexture
+  planet: bakePlanetTexture,
+  asteroid: bakeAsteroidTexture
 };
 
 function loadImage(key, src, onProgress) {

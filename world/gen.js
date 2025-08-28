@@ -27,6 +27,53 @@ export function makeStar(){
   return { x: Math.random()*WORLD.w, y: Math.random()*WORLD.h, r: 60 };
 }
 
+export function makeAsteroid(){
+  const ang = Math.random()*Math.PI*2;
+  const speed = 0.2 + Math.random()*0.8;
+  const r = 10 + Math.random()*20;
+  return {
+    x: Math.random()*WORLD.w,
+    y: Math.random()*WORLD.h,
+    vx: Math.cos(ang)*speed,
+    vy: Math.sin(ang)*speed,
+    r
+  };
+}
+
+export function makeTrader(){
+  const side = Math.floor(Math.random()*4);
+  const m = 80;
+  const pos = [
+    {x:-m, y: Math.random()*WORLD.h},
+    {x:WORLD.w+m, y: Math.random()*WORLD.h},
+    {x:Math.random()*WORLD.w, y:-m},
+    {x:Math.random()*WORLD.w, y:WORLD.h+m}
+  ][side];
+  const ang = Math.random()*Math.PI*2;
+  const speed = 0.5 + Math.random();
+  return {
+    x: pos.x,
+    y: pos.y,
+    vx: Math.cos(ang)*speed,
+    vy: Math.sin(ang)*speed,
+    a: ang,
+    r: 16
+  };
+}
+
+export function spawnAsteroid(state){
+  const a = makeAsteroid();
+  state.asteroids.push(a);
+  return a;
+}
+
+export function spawnTrader(state){
+  const t = makeTrader();
+  if(!state.traders) state.traders = [];
+  state.traders.push(t);
+  return t;
+}
+
 export function reset(seed = Math.random()){
   const state = {
     seed,
@@ -46,6 +93,7 @@ export function reset(seed = Math.random()){
     planets: [],
     blackholes: [],
     pirates: [],
+    traders: [],
     missions: [],
     stars: []
   };
@@ -53,5 +101,7 @@ export function reset(seed = Math.random()){
   for(let i=0;i<CFG.blackholes;i++) state.blackholes.push(makeBlackHole());
   for(let i=0;i<CFG.stars;i++) state.stars.push(makeStar());
   for(let i=0;i<3;i++) state.pirates.push(makePirate());
+  for(let i=0;i<20;i++) state.asteroids.push(makeAsteroid());
+  for(let i=0;i<2;i++) state.traders.push(makeTrader());
   return state;
 }
