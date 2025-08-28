@@ -53,6 +53,30 @@ export function updateWorld(state, dt){
   cam.x = Math.max(0, Math.min(WORLD.w - cam.w, cam.x));
   cam.y = Math.max(0, Math.min(WORLD.h - cam.h, cam.y));
 
+  const moveEntities = list => {
+    for(let i=list.length-1;i>=0;i--){
+      const e = list[i];
+      e.x += (e.vx||0) * dt;
+      e.y += (e.vy||0) * dt;
+      const dx = e.x - s.x;
+      const dy = e.y - s.y;
+      if(dx*dx + dy*dy < (e.r + s.r) * (e.r + s.r)){
+        list.splice(i,1);
+        continue;
+      }
+      if(
+        e.x < -e.r || e.x > WORLD.w + e.r ||
+        e.y < -e.r || e.y > WORLD.h + e.r
+      ){
+        list.splice(i,1);
+      }
+    }
+  };
+
+  moveEntities(state.pirates);
+  moveEntities(state.traders);
+  moveEntities(state.asteroids);
+
   for(let i=state.bullets.length-1;i>=0;i--){
     const b = state.bullets[i];
     b.x += b.vx * dt;
@@ -93,6 +117,27 @@ export function drawWorld(ctx, state){
   }
   const ship = state.ship;
   const shipImg = getImage('ship');
+  const asteroidImg = getImage('asteroid') || planetImg;
+  for(const a of state.asteroids){
+    if(!isVisible(cam, a)) continue;
+    ctx.drawImage(asteroidImg, a.x - cam.x - a.r, a.y - cam.y - a.r, a.r*2, a.r*2);
+  }
+  for(const t of state.traders){
+    if(!isVisible(cam, t)) continue;
+    ctx.save();
+    ctx.translate(t.x - cam.x, t.y - cam.y);
+    ctx.rotate(t.a || 0);
+    ctx.drawImage(shipImg, -t.r, -t.r, t.r*2, t.r*2);
+    ctx.restore();
+  }
+  for(const p of state.pirates){
+    if(!isVisible(cam, p)) continue;
+    ctx.save();
+    ctx.translate(p.x - cam.x, p.y - cam.y);
+    ctx.rotate(p.a || 0);
+    ctx.drawImage(shipImg, -p.r, -p.r, p.r*2, p.r*2);
+    ctx.restore();
+  }
   ctx.save();
   ctx.translate(ship.x - cam.x, ship.y - cam.y);
   ctx.rotate(ship.a);

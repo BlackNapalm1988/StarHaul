@@ -20,7 +20,10 @@ function makeState() {
     bullets: [],
     particles: [],
     bulletPool: { release() {} },
-    particlePool: { release() {} }
+    particlePool: { release() {} },
+    pirates: [],
+    traders: [],
+    asteroids: []
   };
 }
 
@@ -58,4 +61,25 @@ test('ship clamps to bottom edge', () => {
   updateWorld(state, 1);
   assert.equal(state.ship.y, WORLD.h - state.ship.r);
   assert.equal(state.ship.vy, 0);
+});
+
+test('asteroids move with velocity', () => {
+  const state = makeState();
+  state.asteroids.push({x:100, y:100, vx:10, vy:0, r:5});
+  updateWorld(state, 1);
+  assert.equal(state.asteroids[0].x, 110);
+});
+
+test('traders move with velocity', () => {
+  const state = makeState();
+  state.traders.push({x:100, y:100, vx:0, vy:5, r:5});
+  updateWorld(state, 1);
+  assert.equal(state.traders[0].y, 105);
+});
+
+test('pirates cleaned when out of bounds', () => {
+  const state = makeState();
+  state.pirates.push({x:-20, y:0, vx:0, vy:0, r:10});
+  updateWorld(state, 1);
+  assert.equal(state.pirates.length, 0);
 });
