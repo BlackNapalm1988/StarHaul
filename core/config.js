@@ -8,7 +8,7 @@ export const CFG = {
   hunters: { fireEvery: 90 },
   planets: 8,
   blackholes: 2,
-  stars: 5
+  stars: 200
 };
 
 const num = (v, path) => {
