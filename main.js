@@ -70,6 +70,14 @@ function startGame(loaded){
     state.credits = loaded.credits;
     state.reputation = loaded.reputation || 0;
     state.discovered = loaded.discovered || [];
+    if (typeof loaded.fuel === 'number') state.fuel = loaded.fuel;
+    if (typeof loaded.ammo === 'number') state.ammo = loaded.ammo;
+    if (typeof loaded.cargo === 'number') state.cargo = loaded.cargo;
+    if (loaded.ship) {
+      if (typeof loaded.ship.x === 'number') state.ship.x = loaded.ship.x;
+      if (typeof loaded.ship.y === 'number') state.ship.y = loaded.ship.y;
+    }
+    state.missions = loaded.missions || [];
     Object.assign(state.ship, loaded.upgrades || {});
   } else {
     state = reset();
