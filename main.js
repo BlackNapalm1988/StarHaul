@@ -165,6 +165,12 @@ loadAll(p => {
   else continueBtn.classList.remove('hidden');
   const img = getImage('startScreen');
   if (img) startImage.src = img.src;
+}).catch(err => {
+  loadingOverlay.classList.add('hidden');
+  loadingText.textContent = `Error loading assets: ${err.message}`;
+  if (typeof alert === 'function') {
+    alert(`Error loading assets: ${err.message}`);
+  }
 });
 
 newGameBtn.addEventListener('click', () => {
