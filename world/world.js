@@ -105,12 +105,13 @@ export function updateWorld(state, dt){
 export function drawWorld(ctx, state){
   const cam = state.camera;
   ctx.clearRect(0,0,cam.w,cam.h);
+  const starImg = getImage('star');
+  const planetImg = getImage('planet');
   for(const s of state.stars){
     if(!isVisible(cam, s)) continue;
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(s.x - cam.x, s.y - cam.y, 2, 2);
+    const r = s.r || 1;
+    ctx.drawImage(starImg, s.x - cam.x - r, s.y - cam.y - r, r*2, r*2);
   }
-  const planetImg = getImage('planet');
   for(const p of state.planets){
     if(!isVisible(cam, p)) continue;
     ctx.drawImage(planetImg, p.x - cam.x - p.r, p.y - cam.y - p.r, p.r*2, p.r*2);

@@ -22,10 +22,52 @@ function bakePlanetTexture() {
   const c = document.createElement('canvas');
   c.width = c.height = r * 2;
   const ctx = c.getContext('2d');
-  ctx.fillStyle = '#0af';
+
+  // random planet colour
+  const hue = Math.floor(Math.random() * 360);
+  const grad = ctx.createRadialGradient(r * 0.3, r * 0.3, r * 0.2, r, r, r);
+  grad.addColorStop(0, `hsl(${hue},60%,70%)`);
+  grad.addColorStop(1, `hsl(${hue},60%,30%)`);
+  ctx.fillStyle = grad;
   ctx.beginPath();
   ctx.arc(r, r, r, 0, Math.PI * 2);
   ctx.fill();
+
+  // add some noise for variety
+  const img = ctx.getImageData(0, 0, c.width, c.height);
+  for (let i = 0; i < img.data.length; i += 4) {
+    const n = (Math.random() * 30) - 15;
+    img.data[i] += n;
+    img.data[i + 1] += n;
+    img.data[i + 2] += n;
+  }
+  ctx.putImageData(img, 0, 0);
+  return c;
+}
+
+function bakeStarTexture() {
+  const r = 60;
+  const c = document.createElement('canvas');
+  c.width = c.height = r * 2;
+  const ctx = c.getContext('2d');
+  const grad = ctx.createRadialGradient(r, r, 0, r, r, r);
+  grad.addColorStop(0, '#fff');
+  grad.addColorStop(0.5, '#ffd700');
+  grad.addColorStop(1, '#ff8c00');
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(r, r, r, 0, Math.PI * 2);
+  ctx.fill();
+
+  // subtle noise
+  const img = ctx.getImageData(0, 0, c.width, c.height);
+  for (let i = 0; i < img.data.length; i += 4) {
+    const n = (Math.random() * 20) - 10;
+    img.data[i] += n;
+    img.data[i + 1] += n;
+    img.data[i + 2] += n;
+  }
+  ctx.putImageData(img, 0, 0);
   return c;
 }
 
@@ -45,18 +87,19 @@ const imageSources = {
   startScreen: 'StarHauler_Startscreen.png',
   ship: bakeShipTexture,
   planet: bakePlanetTexture,
+  star: bakeStarTexture,
   asteroid: bakeAsteroidTexture
 };
 
 function loadImage(key, src, onProgress) {
   return new Promise((resolve, reject) => {
     const img = new Image();
-    img.src = src;
     img.onload = () => {
       images[key] = img;
       resolve(img);
     };
     img.onerror = reject;
+    img.src = src;
   }).then(res => {
     if (onProgress) onProgress();
     return res;
