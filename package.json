@@ -1,5 +1,11 @@
 {
   "name": "starhaul",
   "version": "1.0.0",
-  "type": "module"
+  "type": "module",
+  "scripts": {
+    "test": "node tests/texture.test.js"
+  },
+  "devDependencies": {
+    "canvas": "^3.2.0"
+  }
 }
