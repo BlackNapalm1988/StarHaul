@@ -51,8 +51,8 @@ const ui = {
   missionLogList: document.getElementById('missionLogList')
 };
 
-function update(){
-  updateWorld(state, 1);
+function update(dt){
+  updateWorld(state, dt);
   refreshOffers(state);
   updateHUD(ui, state);
 }
