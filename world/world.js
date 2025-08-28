@@ -23,6 +23,17 @@ export function updateWorld(state, dt){
   }
   s.x += s.vx * dt;
   s.y += s.vy * dt;
+
+  const clampedX = Math.max(s.r, Math.min(WORLD.w - s.r, s.x));
+  if (clampedX !== s.x) {
+    s.x = clampedX;
+    s.vx = 0;
+  }
+  const clampedY = Math.max(s.r, Math.min(WORLD.h - s.r, s.y));
+  if (clampedY !== s.y) {
+    s.y = clampedY;
+    s.vy = 0;
+  }
   s.vx *= 0.99;
   s.vy *= 0.99;
 
