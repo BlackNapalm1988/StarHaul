@@ -15,7 +15,10 @@ function makeState() {
       turn: 0,
       thrust: false,
       r: 16,
-      centered: true
+      centered: true,
+      hull: 100,
+      hullMax: 100,
+      lives: 3
     },
     bullets: [],
     particles: [],
@@ -23,7 +26,8 @@ function makeState() {
     particlePool: { release() {} },
     pirates: [],
     traders: [],
-    asteroids: []
+    asteroids: [],
+    gameOver: false
   };
 }
 
@@ -82,4 +86,22 @@ test('pirates cleaned when out of bounds', () => {
   state.pirates.push({x:-20, y:0, vx:0, vy:0, r:10});
   updateWorld(state, 1);
   assert.equal(state.pirates.length, 0);
+});
+
+test('pirate collision damages hull and removes pirate', () => {
+  const state = makeState();
+  const pirate = {x: state.ship.x, y: state.ship.y, r: 10, damage: 10};
+  state.pirates.push(pirate);
+  updateWorld(state, 1);
+  assert.equal(state.pirates.length, 0);
+  assert.equal(state.ship.hull, 90);
+});
+
+test('trader collision triggers game over and removes trader', () => {
+  const state = makeState();
+  const trader = {x: state.ship.x, y: state.ship.y, r: 10};
+  state.traders.push(trader);
+  updateWorld(state, 1);
+  assert.equal(state.traders.length, 0);
+  assert.equal(state.gameOver, true);
 });

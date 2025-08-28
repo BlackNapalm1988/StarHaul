@@ -53,7 +53,7 @@ export function updateWorld(state, dt){
   cam.x = Math.max(0, Math.min(WORLD.w - cam.w, cam.x));
   cam.y = Math.max(0, Math.min(WORLD.h - cam.h, cam.y));
 
-  const moveEntities = list => {
+  const moveEntities = (list, type) => {
     for(let i=list.length-1;i>=0;i--){
       const e = list[i];
       e.x += (e.vx||0) * dt;
@@ -61,6 +61,17 @@ export function updateWorld(state, dt){
       const dx = e.x - s.x;
       const dy = e.y - s.y;
       if(dx*dx + dy*dy < (e.r + s.r) * (e.r + s.r)){
+        if(type === 'pirate' || type === 'asteroid'){
+          const dmg = e.damage || 10;
+          s.hull -= dmg;
+          if(s.hull <= 0){
+            s.lives--;
+            if(s.lives <= 0) state.gameOver = true;
+            s.hull = s.hullMax;
+          }
+        } else if(type === 'trader'){
+          state.gameOver = true;
+        }
         list.splice(i,1);
         continue;
       }
@@ -73,9 +84,9 @@ export function updateWorld(state, dt){
     }
   };
 
-  moveEntities(state.pirates);
-  moveEntities(state.traders);
-  moveEntities(state.asteroids);
+  moveEntities(state.pirates, 'pirate');
+  moveEntities(state.traders, 'trader');
+  moveEntities(state.asteroids, 'asteroid');
 
   for(let i=state.bullets.length-1;i>=0;i--){
     const b = state.bullets[i];
