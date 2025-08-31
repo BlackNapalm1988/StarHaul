@@ -12,9 +12,22 @@ export function initInput(opts){
       }
     }
     switch(e.code){
-      case 'ArrowLeft': case 'KeyA': s.turn=-1; break;
-      case 'ArrowRight': case 'KeyD': s.turn=1; break;
-      case 'ArrowUp': case 'KeyW': s.thrust=true; break;
+      case 'ArrowLeft':
+        // Prevent page scroll for bare Arrow keys (no modifiers)
+        if(!(e.ctrlKey || e.metaKey || e.altKey || e.shiftKey)) e.preventDefault();
+        s.turn=-1; 
+        break;
+      case 'KeyA': s.turn=-1; break;
+      case 'ArrowRight':
+        if(!(e.ctrlKey || e.metaKey || e.altKey || e.shiftKey)) e.preventDefault();
+        s.turn=1; 
+        break;
+      case 'KeyD': s.turn=1; break;
+      case 'ArrowUp': 
+        if(!(e.ctrlKey || e.metaKey || e.altKey || e.shiftKey)) e.preventDefault();
+        s.thrust=true; 
+        break;
+      case 'KeyW': s.thrust=true; break;
       case 'Space': e.preventDefault(); opts.fire(); break;
       case 'KeyE': opts.dockToggle(); break;
       case 'KeyF': opts.useGate(); break;

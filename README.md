@@ -29,3 +29,17 @@ Enable **Debug mode** from the settings screen to access these commands:
 ## Credits
 
 Created by the original StarHaul developers. This repository contains modifications for readability and documentation.
+
+## Required DOM Elements
+
+The in-game map UI requires the following elements to be present in `index.html`:
+
+- `#mini`: canvas for the mini map (e.g., within the radar UI)
+- `#bigmap`: canvas for the full-screen map inside the overlay
+- `#mapOverlay`: overlay container that shows the full-screen map
+
+Optional:
+
+- `#mapCloseBtn`: button to close the full-screen map overlay
+
+If any required element is missing, the map initialization logs a console warning and skips setup.

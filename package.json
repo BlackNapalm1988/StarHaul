@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "test": "node tests/texture.test.js"
+    "test": "node --test"
   },
   "devDependencies": {
     "canvas": "^3.2.0"
