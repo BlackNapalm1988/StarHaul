@@ -43,3 +43,55 @@ Optional:
 - `#mapCloseBtn`: button to close the full-screen map overlay
 
 If any required element is missing, the map initialization logs a console warning and skips setup.
+
+## Cloudflare Pages Deployment
+
+StarHaul is deployable as a static site on Cloudflare Pages with no build step.
+
+### 1) Create the Pages project
+
+1. Push this repository to GitHub.
+2. In Cloudflare, create a new **Pages** project and connect the repo.
+3. Use these build settings:
+   - Build command: *(leave empty)*
+   - Build output directory: `.`
+4. Branch mapping:
+   - `main` -> Production
+   - all other branches -> Preview deployments
+
+This repo includes [`wrangler.toml`](wrangler.toml) with:
+- `name = "starhaul"`
+- `pages_build_output_dir = "."`
+- pinned `compatibility_date`
+
+### 2) Continuous integration gate
+
+GitHub Actions CI is defined in [`.github/workflows/ci.yml`](.github/workflows/ci.yml) and runs:
+- `npm ci`
+- `npm test`
+
+Recommended policy: require CI to pass before merging to `main`.
+
+### 3) Cache + security headers
+
+The root [`_headers`](_headers) file configures:
+- short revalidation cache for `index.html`
+- long immutable cache for JS/CSS/images
+- common security headers (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`)
+
+### 4) Release smoke test checklist
+
+After each preview or production deploy:
+- Load game and verify start screen renders
+- Start new game and verify controls (`W/A/D`, `Space`, `E`, `F`, `Shift`, `P`)
+- Open dock UI and confirm market/contract interactions
+- Open/close full map overlay
+- Confirm save/load path still works in browser local storage
+
+### 5) Rollback runbook
+
+If production breaks:
+1. Open Cloudflare Pages project -> **Deployments**.
+2. Select the last known good production deployment.
+3. Redeploy/promote it.
+4. Re-run smoke tests above.
