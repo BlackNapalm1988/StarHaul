@@ -79,7 +79,7 @@ export function makePlanet(id){
   const ringInner = r * (1.25 + rand()*0.15);
   const ringOuter = ringInner + r * (0.45 + rand()*0.35);
   const name = genPlanetName(id);
-  return { id, x, y, r, hue, texSeed, type, spin, rings: hasRings ? { tilt: ringTilt, inner: ringInner, outer: ringOuter } : null, offers: [], kind:'planet', name };
+  return { id, x, y, r, hue, texSeed, type, spin, rings: hasRings ? { tilt: ringTilt, inner: ringInner, outer: ringOuter } : null, offers: [], supply: {}, kind:'planet', name };
 }
 
 export function makeBlackHole(){
@@ -203,6 +203,7 @@ export function reset(seed = Math.random()){
   seedRandom(seed);
   const state = {
     seed,
+    ticks: 0,
     ship: newShip(),
     credits: CFG.economy.startCredits,
     fuel: CFG.economy.fuelStart,

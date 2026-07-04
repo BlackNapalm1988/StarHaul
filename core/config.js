@@ -2,7 +2,7 @@ export const WORLD = { w: 10400, h: 7800 };
 
 export const CFG = {
   ship: { r: 16, invuln: 120, hullMax: 100, accel: 0.11, friction: 0.993, maxSpeed: 6.2, turn: 0.08 },
-  economy: { startCredits: 500, fuelStart: 100, ammoStart: 50, cargoMax: 50, repairPerHull: 20, fuelUse: 0.055 },
+  economy: { startCredits: 500, fuelStart: 100, ammoStart: 50, cargoMax: 50, repairPerHull: 20, fuelUse: 0.055, supplyDecay: 0.02, supplyShiftDeliver: 15, supplyShiftBuy: 8, priceVariance: 0.5 },
   bullets: { max: 7, speed: 9.5, life: 110, cool: 9 },
   contracts: { perPlanet: 3, minTime: 320, maxTime: 600, illegalChance: 0.2 },
   pirateBase: { r: 80, hp: 60, spawnEvery: 400, fireEvery: 180, bounty: 200 },
@@ -61,6 +61,10 @@ const num = (v, path) => {
   num(CFG.economy?.cargoMax, 'economy.cargoMax');
   num(CFG.economy?.repairPerHull, 'economy.repairPerHull');
   num(CFG.economy?.fuelUse, 'economy.fuelUse');
+  num(CFG.economy?.supplyDecay, 'economy.supplyDecay');
+  num(CFG.economy?.supplyShiftDeliver, 'economy.supplyShiftDeliver');
+  num(CFG.economy?.supplyShiftBuy, 'economy.supplyShiftBuy');
+  num(CFG.economy?.priceVariance, 'economy.priceVariance');
   num(CFG.bullets?.max, 'bullets.max');
   num(CFG.bullets?.speed, 'bullets.speed');
   num(CFG.bullets?.life, 'bullets.life');

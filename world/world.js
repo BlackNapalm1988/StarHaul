@@ -8,6 +8,7 @@ function isVisible(cam, obj){
 }
 
 import { WORLD, CFG, GRAVITY } from '../core/config.js';
+import { tickSupply } from '../systems/economy.js';
 import { toast } from '../ui/toast.js';
 import { makePirate } from '../entities/npc.js';
 import { getImage, getPlanetTexture, getAsteroidTexture, getStarTexture, getSpriteSheet, getSpriteArea, getDirectionalFrameIndex, getDirectionalFrameAngle } from '../core/assets.js';
@@ -986,6 +987,8 @@ export function updateWorld(state, dt){
   const s = state.ship;
   // accumulate a simple time base for timed effects
   state.time = (state.time || 0) + dt;
+  state.ticks = (state.ticks || 0) + dt;
+  tickSupply(state);
   const isDocked = !!state.docked;
   // If anchored and thrusting, release anchor
   if (s.anchored && s.thrust) s.anchored = false;

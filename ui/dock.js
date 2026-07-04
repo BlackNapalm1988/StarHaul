@@ -8,7 +8,7 @@ import {
   formatContractTitle,
   visibleOffersForState
 } from '../systems/contracts.js';
-import { marketBuy, setHome, upgradeCost, buyUpgrade, MAX_LEVEL } from '../systems/economy.js';
+import { marketBuy, setHome, upgradeCost, buyUpgrade, MAX_LEVEL, priceMultiplier, getSupply } from '../systems/economy.js';
 import { saveGame } from '../core/save.js';
 
 let marketInit = false;
@@ -238,20 +238,39 @@ function initMarket(ui) {
   marketInit = true;
 }
 
+function supplyLabel(planet, commodity) {
+  const s = getSupply(planet, commodity);
+  if (s >= 70) return ' ↑';
+  if (s <= 30) return ' ↓';
+  return '';
+}
+
 function updateBuyButtons(ui, state) {
+  const planet = state.docked || null;
   ui.dockUI.querySelectorAll('[data-buy]').forEach(btn => {
     const kind = btn.dataset.buy;
-    let cost = costs[kind] || 0;
     if (kind === 'repair') {
-      const per = CFG.economy.repairPerHull; // from config
+      const per = CFG.economy.repairPerHull;
       const missing = Math.max(0, state.ship.hullMax - state.ship.hull);
       const amount = Math.min(10, missing);
-      cost = amount * per;
+      const cost = amount * per;
       btn.textContent = amount > 0 ? `Repair ${amount} ($${cost})` : 'Repair 0';
       btn.disabled = (amount <= 0) || state.credits < cost;
       return;
     }
-    btn.disabled = state.credits < cost;
+    if (kind === 'fuel') {
+      const cost = Math.round(100 * priceMultiplier(planet, 'fuel'));
+      btn.textContent = `+50 Fuel ($${cost})${supplyLabel(planet, 'fuel')}`;
+      btn.disabled = state.credits < cost;
+      return;
+    }
+    if (kind === 'ammo') {
+      const cost = Math.round(50 * priceMultiplier(planet, 'ammo'));
+      btn.textContent = `+10 Ammo ($${cost})${supplyLabel(planet, 'ammo')}`;
+      btn.disabled = state.credits < cost;
+      return;
+    }
+    btn.disabled = state.credits < (costs[kind] || 0);
   });
   if (ui.upgrades) {
     ui.upgrades.querySelectorAll('[data-upgrade]').forEach(btn => {

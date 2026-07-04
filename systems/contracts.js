@@ -1,4 +1,5 @@
 import { CFG } from '../core/config.js';
+import { getSupply } from './economy.js';
 
 const num = (v, path) => {
   if (typeof v !== 'number') throw new Error(`CFG.${path} must be a number`);
@@ -169,6 +170,9 @@ export function deliverMissionsAt(state, planet){
       delivered++;
       reward += m.reward;
       state.cargo = Math.max(0, state.cargo - m.qty);
+      if (!planet.supply) planet.supply = {};
+      const cargoKey = m.cargoName || 'cargo';
+      planet.supply[cargoKey] = Math.min(100, getSupply(planet, cargoKey) + m.qty * CFG.economy.supplyShiftDeliver);
       state.missions.splice(i,1);
     }
   }

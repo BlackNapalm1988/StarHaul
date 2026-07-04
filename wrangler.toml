@@ -1,3 +1,11 @@
 name = "starhaul"
 compatibility_date = "2026-05-11"
 pages_build_output_dir = "dist"
+
+# D1 database — run `wrangler d1 create starhaul` to get the database_id,
+# then replace the placeholder below and set the same binding in the
+# Cloudflare Pages dashboard (Settings > Functions > D1 database bindings).
+[[d1_databases]]
+binding = "DB"
+database_name = "starhaul"
+database_id = "REPLACE_WITH_ID_FROM_WRANGLER_D1_CREATE"

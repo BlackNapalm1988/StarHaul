@@ -4,11 +4,14 @@ import { initInput } from './core/input.js';
 import { reset } from './world/gen.js';
 import { refreshOffers, tickMissions } from './systems/contracts.js';
 import { resolveOutOfFuel } from './systems/rescue.js';
+import { upgradeCost } from './systems/economy.js';
 import { updateHUD } from './ui/hud.js';
 import { dockToggle, dock, undock, renderDock } from './ui/dock.js';
 import { updateWorld, drawWorld } from './world/world.js';
 import { loadAll, getImage, getSpriteSheet, getSpriteArea, getDirectionalFrameIndex, getDirectionalFrameAngle } from './core/assets.js';
-import { saveGame, loadGame } from './core/save.js';
+import { saveGame, loadGame, cloudSave, cloudLoad } from './core/save.js';
+import { isLoggedIn } from './core/auth.js';
+import { initAuthHUD } from './ui/auth-modal.js';
 import { initDebug } from './ui/debug.js';
 import { initMap, updateMap } from './ui/map.js';
 import { initMusicPlayer } from './ui/music.js';
@@ -167,6 +170,13 @@ function gameOverMessageFor(cause){
   }
 }
 
+function calcNetWorth(s) {
+  if (!s) return 0;
+  const keys = ['engine', 'gun', 'hold', 'shield', 'radar'];
+  const upgradeVal = keys.reduce((sum, k) => sum + upgradeCost(k, Math.max(1, s.ship?.[k] || 0)), 0);
+  return Math.floor((s.credits || 0) + upgradeVal + (s.cargo || 0) * 10);
+}
+
 function showGameOver(){
   pause();
   paused = true;
@@ -181,6 +191,23 @@ function showGameOver(){
   if (message) message.textContent = gameOverMessageFor(cause);
   if (finalStats) finalStats.textContent = `Credits ${Math.floor(state.credits)} · Rep ${state.reputation || 0} · Cause ${cause.toUpperCase()}`;
   if (over) over.classList.remove('hidden');
+  // Pre-fill pilot name with logged-in username; auto-submit score to cloud
+  import('./core/auth.js').then(({ getUsername, isLoggedIn, getToken }) => {
+    if (pilotNameInput && isLoggedIn()) pilotNameInput.value = getUsername() || '';
+    if (isLoggedIn() && state) {
+      const scores = {
+        netWorth: calcNetWorth(state),
+        missionsCompleted: (state.missions?.length || 0),
+        reputation: state.reputation || 0,
+        ticksSurvived: Math.floor(state.ticks || 0)
+      };
+      fetch('/api/leaderboard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+        body: JSON.stringify(scores)
+      }).catch(() => {});
+    }
+  });
 }
 
 function updatePauseStats(suffix = ''){
@@ -271,6 +298,13 @@ function startGame(loaded){
     state.home = state.planets.find(p => p.id === loaded.homeId) || null;
     state.docked = state.planets.find(p => p.id === loaded.dockedId) || null;
     state.missions = loaded.missions || [];
+    if (typeof loaded.ticks === 'number') state.ticks = loaded.ticks;
+    if (Array.isArray(loaded.planetSupply)) {
+      for (const entry of loaded.planetSupply) {
+        const p = state.planets.find(pl => pl.id === entry.id);
+        if (p && entry.supply) p.supply = { ...entry.supply };
+      }
+    }
     Object.assign(state.ship, loaded.upgrades || {});
     // Reapply upgrade-derived stats after loading
     const s = state.ship;
@@ -321,7 +355,7 @@ function restartGame(){
 function togglePause(){
   if(!running) return;
   if(!paused){
-    saveGame(state);
+    saveAll(state);
     pause();
     syncMusicPlayerVisibility();
     updatePauseStats();
@@ -406,6 +440,24 @@ initPlaytestReporter({
   onCached: report => toast(`${report.type} report saved locally`)
 });
 
+initAuthHUD(document.getElementById('hud'));
+
+// When auth state changes, push current save to cloud (or pull cloud save)
+window.addEventListener('starhaul:auth', async (e) => {
+  if (!e.detail) return; // logout — nothing to push
+  if (state) {
+    saveGame(state);
+    cloudSave(loadGame()).catch(() => {});
+  } else {
+    // Not in a run yet — try pulling cloud save so Continue is available
+    const cloud = await cloudLoad();
+    if (cloud) {
+      saved = cloud;
+      if (continueBtn) { continueBtn.disabled = false; continueBtn.title = 'Continue saved run'; }
+    }
+  }
+});
+
 const loadingOverlay = document.getElementById('loadingOverlay');
 const loadingText = document.getElementById('loadingText');
 const startScreen = document.getElementById('startScreen');
@@ -463,7 +515,7 @@ restartBtn.addEventListener('click', restartGame);
 resumeBtn.addEventListener('click', togglePause);
 if (pauseSaveBtn) pauseSaveBtn.addEventListener('click', () => {
   if (!state) return;
-  saveGame(state);
+  saveAll(state);
   updatePauseStats(' · Saved');
 });
 if (pauseSettingsBtn) pauseSettingsBtn.addEventListener('click', () => {
@@ -555,6 +607,13 @@ loadAll(p => {
   const img = getImage('startScreen');
   if (img) startImage.src = img.src;
   renderLeaderboard();
+  // Silently try to pull cloud save — may upgrade `saved` to cloud version
+  cloudLoad().then(cloud => {
+    if (cloud) {
+      saved = cloud;
+      if (continueBtn) { continueBtn.disabled = false; continueBtn.title = 'Continue saved run'; }
+    }
+  }).catch(() => {});
 }).catch(err => {
   loadingText.textContent = `Error loading assets: ${err.message}`;
   loadingOverlay.classList.remove('hidden');
@@ -574,11 +633,17 @@ continueBtn.addEventListener('click', () => {
   startGame(saved);
 });
 
+function saveAll(s) {
+  if (!s) return;
+  saveGame(s);
+  if (isLoggedIn()) cloudSave(loadGame()).catch(() => {});
+}
+
 window.addEventListener('beforeunload', () => {
-  if(state) saveGame(state);
+  if(state) saveAll(state);
 });
 
-function renderLeaderboard(){
+function renderLeaderboardLocal(){
   if(!leaderboardBody) return;
   const key = 'starhaul:scores';
   let arr = [];
@@ -591,6 +656,35 @@ function renderLeaderboard(){
   }
   const rows = top.map((s,i) => `<tr><td>${i+1}</td><td>${s.name||'Pilot'}</td><td>${Math.floor(s.credits||0)}</td><td>${s.rep||0}</td><td>${new Date(s.time||0).toLocaleDateString()}</td></tr>`).join('');
   leaderboardBody.innerHTML = `<table><thead><tr><th>#</th><th>Pilot</th><th>Credits</th><th>Rep</th><th>Date</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function renderLeaderboardCloud(board){
+  if(!leaderboardBody) return;
+  const section = (title, rows) => {
+    if (!rows || !rows.length) return '';
+    const header = `<tr><th>#</th><th>Pilot</th><th>${title}</th></tr>`;
+    const body = rows.map((r,i) => {
+      const val = title === 'Net Worth' ? Math.floor(r.net_worth||0)
+                : title === 'Ticks' ? Math.floor(r.ticks_survived||0)
+                : title === 'Missions' ? (r.missions_completed||0)
+                : (r.reputation||0);
+      return `<tr><td>${i+1}</td><td>${r.username||'?'}</td><td>${val}</td></tr>`;
+    }).join('');
+    return `<h4 style="margin:12px 0 4px;font-size:11px;letter-spacing:.1em">${title.toUpperCase()}</h4><table><thead>${header}</thead><tbody>${body}</tbody></table>`;
+  };
+  leaderboardBody.innerHTML =
+    section('Net Worth', board.byNetWorth) +
+    section('Ticks', board.byTicks) +
+    section('Missions', board.byMissions) +
+    section('Reputation', board.byReputation);
+}
+
+function renderLeaderboard(){
+  if(!leaderboardBody) return;
+  renderLeaderboardLocal();
+  fetch('/api/leaderboard').then(r => r.ok ? r.json() : null).then(board => {
+    if (board && (board.byNetWorth?.length || board.byTicks?.length)) renderLeaderboardCloud(board);
+  }).catch(() => {});
 }
 
 if (clearScoresBtn) clearScoresBtn.addEventListener('click', () => {
