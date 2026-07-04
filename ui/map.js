@@ -128,6 +128,22 @@ function drawMap(ctx, canvas, state){
     for(let c=1;c<COLS;c++){ const x = ix + c*cellW; ctx.beginPath(); ctx.moveTo(x, iy); ctx.lineTo(x, iy+ih); ctx.stroke(); }
     for(let r=1;r<ROWS;r++){ const y = iy + r*cellH; ctx.beginPath(); ctx.moveTo(ix, y); ctx.lineTo(ix+iw, y); ctx.stroke(); }
   }
+  // nebula clouds
+  if(state.nebulae){
+    ctx.save();
+    ctx.fillStyle = 'rgba(180,120,255,0.12)';
+    ctx.strokeStyle = 'rgba(180,120,255,0.35)';
+    ctx.lineWidth = isBig ? 1 : 0.75;
+    for(const n of state.nebulae){
+      const rx = Math.max(isBig ? 5 : 2, n.r * sx);
+      const ry = Math.max(isBig ? 5 : 2, n.r * sy);
+      ctx.beginPath();
+      ctx.ellipse(ix + n.x * sx, iy + n.y * sy, rx, ry, 0, 0, Math.PI*2);
+      ctx.fill();
+      if (isBig) ctx.stroke();
+    }
+    ctx.restore();
+  }
   // planets
   ctx.fillStyle = '#8be';
   for(const p of state.planets){
@@ -194,16 +210,6 @@ function drawMap(ctx, canvas, state){
       const rr = Math.max(2, Math.min(8, pb.r * sx * 0.4));
       ctx.beginPath();
       ctx.arc(ix + pb.x * sx, iy + pb.y * sy, rr, 0, Math.PI*2);
-      ctx.fill();
-    }
-  }
-  // gates
-  if(state.gates){
-    ctx.fillStyle = '#9bf';
-    for(const g of state.gates){
-      const rr = Math.max(2, Math.min(8, g.r * sx * 0.5));
-      ctx.beginPath();
-      ctx.arc(ix + g.x * sx, iy + g.y * sy, rr, 0, Math.PI*2);
       ctx.fill();
     }
   }

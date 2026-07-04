@@ -2,7 +2,6 @@ import { newShip } from '../entities/player.js';
 import { makePirate, makeHunter, makePatrol, makePirateBase } from '../entities/npc.js';
 import { createPool } from '../core/pool.js';
 import { WORLD, CFG, SPACING } from '../core/config.js';
-import { getPlanetTexture } from '../core/assets.js';
 
 let rand = Math.random;
 
@@ -45,6 +44,7 @@ num(CFG.economy?.cargoMax, 'economy.cargoMax');
 num(CFG.planets, 'planets');
 num(CFG.blackholes, 'blackholes');
 num(CFG.stars, 'stars');
+num(CFG.nebulae?.count, 'nebulae.count');
 
 export function makePlanet(id){
   // Legacy-inspired planet types and visuals
@@ -97,12 +97,10 @@ export function makeStar(){
   const name = `Star-${Math.floor(rand()*36**2).toString(36).toUpperCase()}${Math.floor(rand()*36**2).toString(36).toUpperCase()}`;
   // Hue starts at 210 and shifts warmer as it ages (mirrors legacy)
   const hue = 210;
-  return { x: rand()*WORLD.w, y: rand()*WORLD.h, r, baseR, hue, age: 0, supernovaAt, flareTimer, kind:'star', name, phase: 'stable', pulse: 0, warned: false };
-}
-
-export function makeGate(){
-  // Gate entity used as a landmark; mechanics handled elsewhere
-  return { x: rand()*WORLD.w, y: rand()*WORLD.h, r: 28, kind:'gate' };
+  const x = rand()*WORLD.w;
+  const y = rand()*WORLD.h;
+  const texSeed = ((Math.floor(x) * 73856093) ^ (Math.floor(y) * 19349663) ^ (Math.floor(baseR) * 83492791)) >>> 0;
+  return { x, y, r, baseR, hue, texSeed, age: 0, supernovaAt, flareTimer, kind:'star', name, phase: 'stable', pulse: 0, warned: false };
 }
 
 export function makeAsteroid(){
@@ -119,6 +117,49 @@ export function makeAsteroid(){
     a: rand()*Math.PI*2,
     av: spin,
     seed: (rand()*0xffffffff)>>>0
+  };
+}
+
+export function makeNebula(x = null, y = null, r = null, hue = null){
+  const radius = r || (600 + rand()*300);
+  const margin = Math.max(160, radius * 0.25);
+  const nx = x == null ? margin + rand() * Math.max(1, WORLD.w - margin * 2) : x;
+  const ny = y == null ? margin + rand() * Math.max(1, WORLD.h - margin * 2) : y;
+  const palettes = [
+    { range:[210,250], name:'blue' },
+    { range:[270,310], name:'purple' },
+    { range:[180,220], name:'green' }
+  ];
+  const pal = palettes[(rand()*palettes.length)|0];
+  const baseHue = hue == null ? pal.range[0] + rand() * (pal.range[1] - pal.range[0]) : hue;
+  const density = 0.4 + rand()*0.6;
+  const blobs = [];
+  const count = 60 + ((rand()*30)|0);
+  for (let i = 0; i < count; i++){
+    const a = rand()*Math.PI*2;
+    const d = rand()*radius*0.9;
+    blobs.push({
+      x: Math.cos(a)*d,
+      y: Math.sin(a)*d,
+      r: radius * (0.15 + rand()*0.23),
+      hue: baseHue - 20 + rand()*40,
+      alpha: 0.18 + rand()*0.18
+    });
+  }
+  return {
+    x: nx,
+    y: ny,
+    r: radius,
+    baseR: radius,
+    hue: baseHue,
+    color: hue == null ? pal.name : 'mixed',
+    density,
+    blobs,
+    alpha: 0.28 + density * 0.08,
+    vx: rand()*0.1 - 0.05,
+    vy: rand()*0.1 - 0.05,
+    layer: rand(),
+    kind: 'nebula'
   };
 }
 
@@ -183,9 +224,9 @@ export function reset(seed = Math.random()){
     patrols: [],
     pirateBases: [],
     traders: [],
-    gates: [],
     missions: [],
-    stars: []
+    stars: [],
+    nebulae: []
   };
   // Global occupancy to avoid overlaps across all entities
   const occupied = [];
@@ -230,6 +271,14 @@ export function reset(seed = Math.random()){
     state.planets.push(p); addOcc(p);
   }
 
+  // Nebula clouds are large soft hazards; keep their centers clear of major bodies,
+  // but allow their edges to overlap the wider playspace.
+  for(let i=0;i<(CFG.nebulae?.count || 0);i++){
+    let n = makeNebula(); let tries = 0; const r = Math.max(120, n.r * 0.35);
+    while (tries < 160 && overlapsAny(n.x, n.y, r, n.kind)) { n = makeNebula(); tries++; }
+    state.nebulae.push(n);
+  }
+
   // Pirate base
   {
     const base = makePirateBase(rand); base.kind = 'base'; let tries = 0; let r = occRadius(base);
@@ -268,22 +317,6 @@ export function reset(seed = Math.random()){
     state.patrols.push(p); addOcc(p);
   }
 
-  // Gates with paired links (0↔1, 2↔3, ...; last unpaired links to previous)
-  if (CFG.gates > 0){
-    const temp = [];
-    for(let i=0;i<CFG.gates;i++){
-      const g = makeGate(); g.id = i; let tries = 0; let r = occRadius(g);
-      while (tries < 160 && overlapsAny(g.x, g.y, r, g.kind||'gate')) { g.x = rand()*WORLD.w; g.y = rand()*WORLD.h; tries++; }
-      temp.push(g);
-    }
-    // link pairs
-    for (let i=0;i<temp.length;i+=2){
-      if (i+1 < temp.length){ temp[i].link = temp[i+1].id; temp[i+1].link = temp[i].id; }
-      else if (i > 0) { temp[i].link = temp[i-1].id; temp[i-1].link = temp[i].id; }
-    }
-    // commit
-    for (const g of temp){ state.gates.push(g); addOcc(g); }
-  }
   // Choose a safe home planet and spawn ship docked there
   if (state.planets.length) {
     const clearance = (pl) => {

@@ -1,5 +1,6 @@
 export function toast(msg){
   try {
+    if (document.body?.classList.contains('is-docked')) return;
     const wrap = document.getElementById('toasts');
     if (!wrap) return;
     const el = document.createElement('div');
@@ -17,4 +18,3 @@ export function toast(msg){
 }
 
 export default toast;
-

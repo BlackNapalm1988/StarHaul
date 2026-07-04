@@ -1,0 +1,244 @@
+{
+    "assetSet": {
+        "name": "Space Hauler Planet Assets",
+        "description": "Metadata for the planet game assets created for a space-themed video game.",
+        "canvas": {
+            "width": 1024,
+            "height": 1024,
+            "units": "pixels",
+            "background": "transparent"
+        },
+        "sharedOrientation": {
+            "northPole": {
+                "position": "top center of image",
+                "canvasCoordinateApprox": {
+                    "x": 512,
+                    "y": 0
+                }
+            },
+            "southPole": {
+                "position": "bottom center of image",
+                "canvasCoordinateApprox": {
+                    "x": 512,
+                    "y": 1024
+                }
+            },
+            "equator": {
+                "position": "horizontal centerline across the image",
+                "canvasCoordinateApprox": {
+                    "y": 512
+                }
+            },
+            "rotationAxis": "vertical, running from north pole at top to south pole at bottom"
+        },
+        "sharedLighting": {
+            "primaryLightSource": {
+                "direction": "left side of image",
+                "effect": "left hemisphere is brighter and more illuminated"
+            },
+            "primaryShading": {
+                "direction": "right side of image",
+                "effect": "right hemisphere falls into darker shadow"
+            }
+        },
+        "boundaryRules": {
+            "planetFill": "planet should fill nearly the full 1024x1024 canvas while remaining fully visible",
+            "outsidePlanetBoundary": "nothing should appear outside the planet boundary",
+            "excludedElements": [
+                "rings",
+                "dust clouds",
+                "moons",
+                "debris",
+                "background stars",
+                "external atmosphere trails"
+            ]
+        }
+    },
+    "planets": [
+        {
+            "id": "ice_world",
+            "displayName": "Ice World",
+            "type": "terrestrial",
+            "visualDescription": "Frozen planet with glaciers, icy crust, pale blue-white coloration, polar ice formations, and cold surface texture.",
+            "gamePurpose": "Cold or frozen destination planet; suitable for mining, survival, or remote colony gameplay.",
+            "canvas": {
+                "width": 1024,
+                "height": 1024,
+                "background": "transparent"
+            },
+            "orientation": {
+                "northPole": "top of image",
+                "southPole": "bottom of image",
+                "axis": "vertical"
+            },
+            "lighting": {
+                "lightSource": "left side",
+                "shading": "right side"
+            },
+            "boundary": {
+                "planetOnly": true,
+                "allowedOutsideBoundary": false,
+                "notes": "No rings, dust clouds, moons, or external objects."
+            }
+        },
+        {
+            "id": "water_world",
+            "displayName": "Water World",
+            "type": "oceanic",
+            "visualDescription": "Blue ocean planet dominated by water, with cloud systems and visible atmospheric swirl patterns over the surface.",
+            "gamePurpose": "Oceanic destination planet; suitable for aquatic colonies, rare resources, or trade missions.",
+            "canvas": {
+                "width": 1024,
+                "height": 1024,
+                "background": "transparent"
+            },
+            "orientation": {
+                "northPole": "top of image",
+                "southPole": "bottom of image",
+                "axis": "vertical"
+            },
+            "lighting": {
+                "lightSource": "left side",
+                "shading": "right side"
+            },
+            "boundary": {
+                "planetOnly": true,
+                "allowedOutsideBoundary": false,
+                "notes": "No rings, dust clouds, moons, or external objects."
+            }
+        },
+        {
+            "id": "lava_world",
+            "displayName": "Lava World",
+            "type": "volcanic",
+            "visualDescription": "Dark volcanic planet with glowing lava fissures, molten cracks, blackened crust, and intense orange-red heat patterns.",
+            "gamePurpose": "Hazardous high-value resource planet; suitable for mining, danger zones, or hostile mission areas.",
+            "canvas": {
+                "width": 1024,
+                "height": 1024,
+                "background": "transparent"
+            },
+            "orientation": {
+                "northPole": "top of image",
+                "southPole": "bottom of image",
+                "axis": "vertical"
+            },
+            "lighting": {
+                "lightSource": "left side",
+                "shading": "right side",
+                "secondaryEmission": "internal lava glow across fissures"
+            },
+            "boundary": {
+                "planetOnly": true,
+                "allowedOutsideBoundary": false,
+                "notes": "No rings, dust clouds, moons, or external objects. Internal glow is contained within the planet silhouette."
+            }
+        },
+        {
+            "id": "gas_world",
+            "displayName": "Gas World",
+            "type": "gas_giant",
+            "visualDescription": "Large banded gas planet with swirling atmospheric belts, storm systems, and soft cloud-layer textures.",
+            "gamePurpose": "Gas giant destination or navigation landmark; suitable for fuel extraction, orbital stations, or hazard zones.",
+            "canvas": {
+                "width": 1024,
+                "height": 1024,
+                "background": "transparent"
+            },
+            "orientation": {
+                "northPole": "top of image",
+                "southPole": "bottom of image",
+                "axis": "vertical",
+                "cloudBands": "generally horizontal around the equator"
+            },
+            "lighting": {
+                "lightSource": "left side",
+                "shading": "right side"
+            },
+            "boundary": {
+                "planetOnly": true,
+                "allowedOutsideBoundary": false,
+                "notes": "No rings, dust clouds, moons, or external objects. Atmospheric details remain inside the circular planet boundary."
+            }
+        },
+        {
+            "id": "industrial_world",
+            "displayName": "Industrial World",
+            "type": "urban_industrial",
+            "visualDescription": "Heavily industrialized planet covered with megacity structures, factories, orange city lights, smokestack-like silhouettes, and smog-like surface haze contained within the planet.",
+            "gamePurpose": "Civilized or corporate-controlled planet; suitable for trade hubs, manufacturing missions, upgrades, and faction activity.",
+            "canvas": {
+                "width": 1024,
+                "height": 1024,
+                "background": "transparent"
+            },
+            "orientation": {
+                "northPole": "top of image",
+                "southPole": "bottom of image",
+                "axis": "vertical"
+            },
+            "lighting": {
+                "lightSource": "left side",
+                "shading": "right side",
+                "secondaryEmission": "city and industrial lights across the surface"
+            },
+            "boundary": {
+                "planetOnly": true,
+                "allowedOutsideBoundary": false,
+                "notes": "No rings, dust clouds, moons, or external objects. Smog and city glow should stay within the planet silhouette."
+            }
+        },
+        {
+            "id": "rocky_world",
+            "displayName": "Rocky World",
+            "type": "terrestrial_barren",
+            "visualDescription": "Barren rocky planet with craters, mountain ranges, valleys, rough stone texture, and muted brown-gray coloration.",
+            "gamePurpose": "Mining or frontier planet; suitable for asteroid-adjacent routes, outposts, or resource extraction.",
+            "canvas": {
+                "width": 1024,
+                "height": 1024,
+                "background": "transparent"
+            },
+            "orientation": {
+                "northPole": "top of image",
+                "southPole": "bottom of image",
+                "axis": "vertical"
+            },
+            "lighting": {
+                "lightSource": "left side",
+                "shading": "right side"
+            },
+            "boundary": {
+                "planetOnly": true,
+                "allowedOutsideBoundary": false,
+                "notes": "No rings, dust clouds, moons, or external objects."
+            }
+        },
+        {
+            "id": "desert_world",
+            "displayName": "Desert World",
+            "type": "arid_terrestrial",
+            "visualDescription": "Dry desert planet with golden sand tones, rocky plateaus, dune-like texture, crater marks, and warm tan-brown coloration.",
+            "gamePurpose": "Arid trade or survival planet; suitable for frontier settlements, smuggling routes, or sparse-resource gameplay.",
+            "canvas": {
+                "width": 1024,
+                "height": 1024,
+                "background": "transparent"
+            },
+            "orientation": {
+                "northPole": "top of image",
+                "southPole": "bottom of image",
+                "axis": "vertical"
+            },
+            "lighting": {
+                "lightSource": "left side",
+                "shading": "right side"
+            },
+            "boundary": {
+                "planetOnly": true,
+                "allowedOutsideBoundary": false,
+                "notes": "No rings, dust clouds, moons, or external objects. Any dust-storm-like texture should remain on the planet surface only."
+            }
+        }
+    ]
+}

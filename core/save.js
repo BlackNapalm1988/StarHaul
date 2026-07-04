@@ -10,8 +10,14 @@ export function saveGame(state) {
     cargo: state.cargo,
     ship: {
       x: state.ship?.x,
-      y: state.ship?.y
+      y: state.ship?.y,
+      hull: state.ship?.hull,
+      hullMax: state.ship?.hullMax,
+      lives: state.ship?.lives,
+      anchored: !!state.ship?.anchored
     },
+    dockedId: typeof state.docked?.id === 'number' ? state.docked.id : null,
+    homeId: typeof state.home?.id === 'number' ? state.home.id : null,
     upgrades: {
       engine: state.ship?.engine,
       hold: state.ship?.hold,
@@ -38,6 +44,8 @@ export function loadGame() {
     // Backward compatibility for saves without new fields
     if (!data.missions) data.missions = [];
     if (!data.ship) data.ship = {};
+    if (!('dockedId' in data)) data.dockedId = null;
+    if (!('homeId' in data)) data.homeId = null;
     if (typeof data.fuel !== 'number') data.fuel = undefined;
     if (typeof data.ammo !== 'number') data.ammo = undefined;
     if (typeof data.cargo !== 'number') data.cargo = undefined;

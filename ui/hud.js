@@ -1,3 +1,5 @@
+import { formatContractDetails, formatContractTitle } from '../systems/contracts.js';
+
 // Simple cache for last-rendered HUD values to avoid redundant DOM writes
 const _hudCache = {
   credits: null,
@@ -9,12 +11,21 @@ const _hudCache = {
   hullMax: null,
   lives: null,
   rep: null,
-  missionCount: null
+  missionCount: null,
+  missionSig: null
 };
 
 // cache for life bar DOM and last width
 let _lifeEl = null;
 let _lastLifePct = -1;
+
+const escapeHtml = value => String(value).replace(/[&<>"']/g, char => ({
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;'
+}[char]));
 
 function setTextIfChanged(el, value, key){
   if(!_hudCache.hasOwnProperty(key)) return; // safety guard
@@ -58,11 +69,15 @@ export function updateHUD(ui, state){
     }
   }
 
-  const count = state.missions?.length || 0;
-  // Update count and re-render mission log only if the array length changed
-  if(_hudCache.missionCount !== count){
-    ui.missionCount.textContent = count;
+  const missions = state.missions || [];
+  const count = missions.length;
+  const missionSig = missions
+    .map(m => `${m.id}:${Math.max(0, Math.floor(m.timeLeft || 0))}:${state.tracked === m.id ? 1 : 0}`)
+    .join('|');
+  if(_hudCache.missionCount !== count || _hudCache.missionSig !== missionSig){
+    if (ui.missionCount) ui.missionCount.textContent = count;
     _hudCache.missionCount = count;
+    _hudCache.missionSig = missionSig;
     renderMissionLog(ui, state);
   }
 }
@@ -78,7 +93,7 @@ export function renderMissionLog(ui, state){
       const time = Math.max(0, Math.floor(m.timeLeft || 0));
       const tracked = state.tracked === m.id;
       const btn = `<button class="btn" data-track="${m.id}">${tracked ? 'Untrack' : 'Track'}</button>`;
-      return `<div class="item"><div>Deliver ${m.qty} to ${m.to} ${illegal} <span class="badge">${time}s</span></div><div>${btn}</div></div>`;
+      return `<div class="item"><div class="contract-copy"><span class="contract-title">${escapeHtml(formatContractTitle(state, m))}</span><span class="contract-route">${escapeHtml(formatContractDetails(state, m))}</span></div><div class="contract-actions">${illegal} <span class="badge">${time}s</span> ${btn}</div></div>`;
     }).join('');
   }
   // Avoid touching innerHTML if content hasn't changed

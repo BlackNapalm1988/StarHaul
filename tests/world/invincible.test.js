@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { updateWorld } from './world.js';
-import { WORLD } from '../core/config.js';
+import { updateWorld } from '../../world/world.js';
+import { WORLD } from '../../core/config.js';
 
 function makeState(invincible){
   return {
@@ -28,4 +28,3 @@ test('enemy bullets damage player when not invincible', () => {
   updateWorld(state, 1);
   assert.ok(state.ship.hull < 100);
 });
-

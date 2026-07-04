@@ -4,8 +4,26 @@ StarHaul is a lightweight browser game where you pilot a small cargo ship across
 
 ## Running the game
 
-1. Open `index.html` in a modern web browser.
-2. The game runs entirely client-side, no build step required.
+StarHaul uses browser ES modules, so Safari should load it from a local web server instead of opening `index.html` directly with a `file://` URL.
+
+1. In this folder, run `npm start`.
+2. Open `http://localhost:8000/` in Safari or another modern browser.
+
+The game runs entirely client-side, no build step required.
+
+## Testing and build
+
+- `npm test` runs the Node test suite from `tests/`.
+- `npm run build` refreshes `dist/` for static hosting.
+- `dist/`, `node_modules/`, and OS cache files are generated locally and should not be edited or committed.
+
+## Playtest reports
+
+Run `npm start` and open `http://localhost:8000/`. During playtesting, press `Cmd+\`` on macOS or `Ctrl+\`` on other keyboards to open the report panel. Reports submitted through the local server append to `reports/playtest-reports.jsonl`.
+
+## Project layout
+
+See [docs/structure.md](docs/structure.md) for the current folder map and cleanup rules.
 
 ## Controls
 
@@ -13,15 +31,22 @@ StarHaul is a lightweight browser game where you pilot a small cargo ship across
 - **↑ or W** – Thrust
 - **Space** – Fire weapon
 - **E** – Dock/Undock
-- **F** – Warp gate
 - **Shift** – Hyperspace jump
 - **P** – Pause
 
 ## Debug Commands
 
-Enable **Debug mode** from the settings screen to access these commands:
+Press `` ` `` during playtesting to open the debug menu. The menu includes toggles for:
 
-- `~` – Toggle debug overlay (FPS, entity counts, state flags)
+- Invincible
+- Gravity Arrows
+- God Mode
+- Entity Naming
+- Bounding Boxes
+- FPS
+
+When Invincible or God Mode is enabled, these commands are available:
+
 - `Ctrl+1` – Refill fuel
 - `Ctrl+2` – Add cargo
 - `Ctrl+3` – Spawn a nearby hazard
@@ -46,22 +71,22 @@ If any required element is missing, the map initialization logs a console warnin
 
 ## Cloudflare Pages Deployment
 
-StarHaul is deployable as a static site on Cloudflare Pages with no build step.
+StarHaul is deployable as a static site on Cloudflare Pages. The build step copies only the runtime assets into `dist` so tests, dependencies, and archival source files are not published.
 
 ### 1) Create the Pages project
 
 1. Push this repository to GitHub.
 2. In Cloudflare, create a new **Pages** project and connect the repo.
 3. Use these build settings:
-   - Build command: *(leave empty)*
-   - Build output directory: `.`
+   - Build command: `npm run build`
+   - Build output directory: `dist`
 4. Branch mapping:
    - `main` -> Production
    - all other branches -> Preview deployments
 
 This repo includes [`wrangler.toml`](wrangler.toml) with:
 - `name = "starhaul"`
-- `pages_build_output_dir = "."`
+- `pages_build_output_dir = "dist"`
 - pinned `compatibility_date`
 
 ### 2) Continuous integration gate
@@ -75,8 +100,8 @@ Recommended policy: require CI to pass before merging to `main`.
 ### 3) Cache + security headers
 
 The root [`_headers`](_headers) file configures:
-- short revalidation cache for `index.html`
-- long immutable cache for JS/CSS/images
+- short revalidation cache for `index.html`, JS modules, and CSS
+- one-day cache for browser-loaded assets
 - common security headers (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`)
 
 ### 4) Release smoke test checklist

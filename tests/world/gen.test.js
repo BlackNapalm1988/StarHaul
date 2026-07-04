@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { spawnAsteroid, spawnTrader, reset } from './gen.js';
+import { spawnAsteroid, spawnTrader, reset } from '../../world/gen.js';
 
 function makeState(){
   return { asteroids: [], traders: [] };
@@ -25,4 +25,11 @@ test('reset with same seed is deterministic', () => {
   const b = reset(123);
   assert.deepEqual(a.planets, b.planets);
   assert.deepEqual(a.pirates, b.pirates);
+  assert.deepEqual(a.nebulae, b.nebulae);
+});
+
+test('reset creates nebula clouds', () => {
+  const state = reset(123);
+  assert.ok(state.nebulae.length > 0);
+  assert.ok(state.nebulae.every(n => n.kind === 'nebula' && Array.isArray(n.blobs)));
 });

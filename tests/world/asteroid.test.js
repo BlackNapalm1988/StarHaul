@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { updateWorld } from './world.js';
-import { WORLD } from '../core/config.js';
+import { updateWorld } from '../../world/world.js';
+import { WORLD } from '../../core/config.js';
 
 function baseState(){
   return {
@@ -14,7 +14,7 @@ function baseState(){
 
 test('large asteroid fragments into smaller pieces on hit', () => {
   const state = baseState();
-  const big = { x: state.ship.x + 5, y: state.ship.y, vx:0, vy:0, r: 24, seed: 12345 };
+  const big = { x: state.ship.x + 80, y: state.ship.y, vx:0, vy:0, r: 24, seed: 12345 };
   state.asteroids.push(big);
   // player bullet overlapping asteroid
   state.bullets.push({ x: big.x, y: big.y, vx:0, vy:0, r:2, life:10, friendly:true, damage:5 });
@@ -23,4 +23,3 @@ test('large asteroid fragments into smaller pieces on hit', () => {
   assert.ok(state.asteroids.length >= 1, 'fragments created');
   assert.ok(state.asteroids.every(a => a.r < 24), 'all fragments smaller');
 });
-
