@@ -1,4 +1,4 @@
-name = "starhaul"
+name = "starhauler"
 compatibility_date = "2026-05-11"
 pages_build_output_dir = "dist"
 
@@ -7,5 +7,5 @@ pages_build_output_dir = "dist"
 # Cloudflare Pages dashboard (Settings > Functions > D1 database bindings).
 [[d1_databases]]
 binding = "DB"
-database_name = "starhaul"
-database_id = "f7bf5dbb-5509-4f48-86c6-d9667aa6c26c"
+database_name = "starhauler"
+database_id = "880fc0db-8d2d-4b5d-9d38-462be0c5cfaf"
