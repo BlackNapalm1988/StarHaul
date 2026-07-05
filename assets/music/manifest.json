@@ -1,0 +1,46 @@
+{
+  "tracks": [
+    {
+      "file": "Gamma Spark.mp3",
+      "title": "Gamma Spark",
+      "moods": ["combat", "hazard"],
+      "locations": ["pirate", "star"]
+    },
+    {
+      "file": "Asteroid Run.mp3",
+      "title": "Asteroid Run",
+      "moods": ["combat", "cruise"],
+      "locations": ["deep_space", "asteroid"]
+    },
+    {
+      "file": "Drift Between Us.mp3",
+      "title": "Drift Between Us",
+      "moods": ["cruise", "drift", "ambient"],
+      "locations": ["deep_space", "nebula"]
+    },
+    {
+      "file": "Wormhole Drift.mp3",
+      "title": "Wormhole Drift",
+      "moods": ["hazard", "drift"],
+      "locations": ["blackhole", "deep_space"]
+    },
+    {
+      "file": "Event Horizon Drift.mp3",
+      "title": "Event Horizon Drift",
+      "moods": ["hazard", "ambient"],
+      "locations": ["blackhole", "deep_space"]
+    },
+    {
+      "file": "Glass Moon Soil.mp3",
+      "title": "Glass Moon Soil",
+      "moods": ["orbit", "dock", "ambient"],
+      "locations": ["planet", "ice", "rocky"]
+    },
+    {
+      "file": "Sunside Riot.mp3",
+      "title": "Sunside Riot",
+      "moods": ["cruise", "combat"],
+      "locations": ["deep_space", "pirate"]
+    }
+  ]
+}

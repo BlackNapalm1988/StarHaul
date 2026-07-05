@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
+    "build": "node scripts/build-static.js",
+    "start": "node scripts/playtest-server.js",
     "test": "node --test"
   },
   "devDependencies": {

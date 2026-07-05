@@ -2,16 +2,51 @@ const MAX_LEVEL = 4;
 
 import { CFG } from '../core/config.js';
 
+export function getSupply(planet, commodity) {
+  if (!planet) return 50;
+  if (!planet.supply) planet.supply = {};
+  const v = planet.supply[commodity];
+  return typeof v === 'number' ? v : 50;
+}
+
+export function priceMultiplier(planet, commodity) {
+  const supply = getSupply(planet, commodity);
+  return 1.0 + (50 - supply) * (CFG.economy.priceVariance / 50);
+}
+
+export function tickSupply(state) {
+  const decay = CFG.economy.supplyDecay;
+  for (const p of state.planets) {
+    if (!p.supply) continue;
+    for (const key of Object.keys(p.supply)) {
+      const s = p.supply[key];
+      if (s > 50) p.supply[key] = Math.max(50, s - decay);
+      else if (s < 50) p.supply[key] = Math.min(50, s + decay);
+    }
+  }
+}
+
 export function marketBuy(state, what){
-  if(what === 'fuel' && state.credits >= 100){
-    state.credits -= 100;
-    state.fuel += 50;
+  const planet = state.docked || null;
+  if(what === 'fuel'){
+    const multi = priceMultiplier(planet, 'fuel');
+    const cost = Math.round(100 * multi);
+    if(state.credits >= cost){
+      state.credits -= cost;
+      state.fuel += 50;
+      if(planet){ planet.supply.fuel = Math.max(0, getSupply(planet, 'fuel') - CFG.economy.supplyShiftBuy); }
+    }
   }
-  if(what === 'ammo' && state.credits >= 50){
-    state.credits -= 50;
-    state.ammo += 10;
+  if(what === 'ammo'){
+    const multi = priceMultiplier(planet, 'ammo');
+    const cost = Math.round(50 * multi);
+    if(state.credits >= cost){
+      state.credits -= cost;
+      state.ammo += 10;
+      if(planet){ planet.supply.ammo = Math.max(0, getSupply(planet, 'ammo') - CFG.economy.supplyShiftBuy); }
+    }
   }
-  if(what === 'repair' && state.credits >= 200){
+  if(what === 'repair'){
     if (!state.ship) return;
     const per = CFG.economy.repairPerHull;
     const missing = Math.max(0, state.ship.hullMax - state.ship.hull);
